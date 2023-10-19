@@ -1,0 +1,28 @@
+{
+  "name": "metrojs",
+  "version": "0.0.1",
+  "description": "http client with middleware support",
+  "type": "module",
+  "main": "src/metro.mjs",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "tap test/*.mjs",
+    "build": "parcel build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/poef/metrojs.git"
+  },
+  "author": "auke@muze.nl",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/poef/metrojs/issues"
+  },
+  "homepage": "https://github.com/poef/metrojs/#readme",
+  "devDependencies": {
+    "eslint": "^8.13.0",
+    "tap": "^16.0.1"
+  }
+}
