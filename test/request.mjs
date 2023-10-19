@@ -57,14 +57,36 @@ tap.test('bodyReadableStream', async t => {
 	t.end()
 })
 
+tap.test('bodyFunction', t => {
+	let req = metro.request('https://example.com', {
+		method: 'POST',
+		body: 'This is the body'
+	}, {
+		body: (b, r) => {
+			return b+' altered'
+		}
+	})
+	t.equal(''+req.body, 'This is the body altered')
+	t.end()
+})
+
 tap.test('clone', t => {
+	let req = metro.request('https://example.com', {
+		method: 'POST',
+		body: 'This is the body'
+	})
+	let req2 = req.clone()
+	t.notEqual(req, req2)
+	t.equal(req.url, req2.url)
 	t.end()
 })
 
-tap.test('toString', t => {
-	t.end()
-})
-
-tap.test('formData', t => {
+tap.test('text', async t => {
+	let req = metro.request('https://example.com', {
+		method: 'POST',
+		body: 'This is the body'
+	})
+	let s = await req.text()
+	t.equal(s, 'This is the body')
 	t.end()
 })

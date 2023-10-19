@@ -96,7 +96,7 @@ function appendHeaders(req, headers) {
 
 export function request(...options) {
 	let r = new Request('https://localhost/')
-	let args
+	let args, body
 	for (let option of options) {
 		if (typeof option == 'string' || option instanceof String) {
 			r = new Request(option, r)
@@ -120,7 +120,17 @@ export function request(...options) {
 					break
 					default:
 						if (typeof option[param] == 'function') {
-							args[param] = option[param](r[param], r)
+							let paramValue
+							if (param=='body') {
+								if (body) {
+									paramValue = body
+								} else {
+									paramValue = r.body
+								}
+							} else {
+								paramValue = r[param]
+							}
+							args[param] = option[param](paramValue, r)
 						} else if (typeof option[param] == 'string' || option[param] instanceof String ) {
 							args[param] = ''+option[param]
 						} else {
@@ -131,6 +141,9 @@ export function request(...options) {
 			}
 			if (args) {
 				r = new Request(r, args)
+				if (args.body) {
+					body = args.body
+				}
 			}
 		}
 	}
@@ -172,7 +185,6 @@ export function request(...options) {
 					// around it to keep the ReadableStream api
 					// accessible, but allow access to the original
 					// body value as well
-					let body = args.body
 					if (!body) {
 						body = r.body
 					}
