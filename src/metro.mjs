@@ -2,20 +2,20 @@ const metroURL = 'https://metro.muze.nl/details/'
 
 class Client {
 	#options = {}
-	construct(...options) {
-		this.#options.verbs = ['get','post','put','delete','patch','head','options','query']
+	#verbs = ['get','post','put','delete','patch','head','options','query']
+
+	constructor(...options) {
+		this.#options.verbs = this.#verbs
 		for (let option of options) {
 			if (typeof option == 'string' || option instanceof String) {
 				this.#options.baseURL = ''+option
 			} else if (option instanceof Client) {
-				this.#options = option.#options
+				Object.assign(this.#options, option.#options)
 			} else if (option instanceof Function) {
-				this.#options = option(this.#options)
+				Object.assign(this.#options, option(this.#options))
 			} else if (option && typeof option == 'object') {
 				for (let param in option) {
-					if (typeof option[param] == 'function') {
-						this.#options[param] = option[param](this.#options[param], this.#options)
-					} else if (param == 'middlewares') {
+					if (param == 'middlewares') {
 						if (typeof option.middlewares == 'function') {
 							option.middlewares = [ option.middlewares ]
 						}
@@ -24,17 +24,25 @@ class Client {
 							throw metroError('metro.client: middlewares must be a function or an array of functions '
 								+metroURL+'client/invalid-middlewares-value/', option.middlewares[index])
 						}
+						if (!Array.isArray(this.#options.middlewares)) {
+							this.#options.middlewares = []
+						}
 						this.#options.middlewares = this.#options.middlewares.concat(option.middlewares)
+					} else if (typeof option[param] == 'function') {
+						this.#options[param] = option[param](this.#options[param], this.#options)
 					} else {
 						this.#options[param] = option[param]
 					}
 				}
 			}
 		}
-		for (let verb of this.#options.verbs) {
+		if (!this.#options.verbs) {
+			this.#options.verbs = this.#verbs
+		}
+		for (const verb of this.#options.verbs) {
 			this[verb] = async function(...options) {
-				options.push({method: verb.toUpper()})
-				return this.#fetch(request(...options))
+				options.push({method: verb.toUpperCase()})
+				return this.#fetch(request({url:this.#options.baseURL},...options))
 			}
 		}
 		Object.freeze(this)
@@ -42,23 +50,24 @@ class Client {
 
 	#fetch(req) {
 		if (!req.url) {
-			throw metroError('metro.client.'+r.method.toLower()+': Missing url parameter '+metroURL+'client/missing-url-param/', req)
+			throw metroError('metro.client.'+r.method.toLowerCase()+': Missing url parameter '+metroURL+'client/missing-url-param/', req)
 		}
-		let middlewareIndex = count(this.#options?.middleware) || -1
+		let middlewares = this.#options?.middlewares?.slice() || []
+		let options = this.#options
+		let middlewareIndex = 0
 		let next = async function next(req) {
-			let result, group = 'get '+middlewareIndex
-			if (this.#options.trace) {
+			let result, group = 'get '+middlewareIndex++
+			if (options.trace) {
 				metroConsole.group(group)
 				metroConsole.info(req)				
 			}
-			if (middlewareIndex<0) {
+			let middleware = middlewares.pop()
+			if (!middleware) {
 				result = await fetch(req)
 			} else {
-				let middleware = this.#options.middlewares[middlewareIndex]
-				middlewareIndex--
-				result = await middleware(req, next)
+				result = await middleware(req, next, options)
 			}
-			if (this.#options.trace) {
+			if (options.trace) {
 				metroConsole.info(result)
 				metroConsole.groupEnd(group)
 			}
@@ -68,7 +77,7 @@ class Client {
 	}
 
 	with(...options) {
-		return new Client(...this.#options, ...options)
+		return new Client(this, ...options)
 	}
 }
 
@@ -136,7 +145,8 @@ export function request(...options) {
 	let args, body, method = r.method
 	for (let option of options) {
 		if (typeof option == 'string' || option instanceof String) {
-			r = new Request(option, r)
+			let url = new URL(option, r.url)
+			r = new Request(url, r)
 		} else if (option instanceof Request) {
 			r = new Request(option)
 		} else if (option && typeof option == 'object') {
@@ -343,10 +353,10 @@ const metroConsole = {
 		}		
 	},
 	group: (name) => {
-		console.group(name)
+		console.group('Ⓜ️  '+name)
 	},
 	groupEnd: (name) => {
-		console.groupEnd(name)
+		console.groupEnd('Ⓜ️  '+name)
 	}
 }
 
