@@ -80,7 +80,7 @@ export function request(...options) {
 	let r = {}
 	for (let option of options) {
 		if (typeof option == 'string' || option instanceof String) {
-			r = new Request(r, option)
+			r = new Request(option, r)
 		} else if (option instanceof Request) {
 			r = new Request(r)
 		} else if (option && typeof option == 'object') {
@@ -112,16 +112,15 @@ export function request(...options) {
 	}
 	Object.freeze(r)
 	return new Proxy(r, {
-		get(param) {
-			if (param == 'with') {
+		get(target, prop, receiver) {
+			if (prop == 'with') {
 				return function(...options) {
-					return request(r, ...options)
+					return request(target, ...options)
 				}
 			}
-			return r[param]
+			return target[prop]
 		}
 	})
-
 }
 
 function appendSearchParams(url, params) {
@@ -195,13 +194,13 @@ export function url(...options) {
 
 const metroConsole = {
 	error: (message, ...details) => {
-		console.error('Ⓜ️ '+message)
+		console.error('Ⓜ️  '+message)
 		if (details) {
 			console.log(...details)
 		}		
 	},
 	info: (message, ...details) => {
-		console.info('Ⓜ️ '+message)
+		console.info('Ⓜ️  '+message)
 		if (details) {
 			console.log(...details)
 		}		
