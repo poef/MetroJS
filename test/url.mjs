@@ -7,6 +7,14 @@ tap.test('start', t => {
 	t.end()
 })
 
+tap.test('copy', t => {
+	let url = new URL('https://example.com')
+	let url2 = metro.url(url, '?foo=bar')
+	t.equal(url.href, 'https://example.com/')
+	t.equal(url2.href, 'https://example.com/?foo=bar')
+	t.end()
+})
+
 tap.test('search', t => {
 	let url = metro.url('https://example.com', '?foo=bar')
 	t.equal(url.href, 'https://example.com/?foo=bar')
