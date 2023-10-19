@@ -34,7 +34,7 @@ class Client {
 		for (let verb of this.#options.verbs) {
 			this[verb] = async function(...options) {
 				options.push({method: verb.toUpper()})
-				return this.#fetch(metro.request(...options))
+				return this.#fetch(request(...options))
 			}
 		}
 		Object.freeze(this)
@@ -76,26 +76,45 @@ export function client(...options) {
 	return new Client(...options)
 }
 
+function appendHeaders(req, headers) {
+	if (!Array.isArray(headers)) {
+		headers = [headers]
+	}
+	headers.forEach((header) => {
+		if (typeof header == 'function') {
+			let result = header(req.headers, req)
+			if (result) {
+				req.headers = result
+			}
+		} else {
+			Object.entries(header).forEach(([name,value]) => {
+				req.headers.append(name, value)
+			})
+		}
+	})
+}
+
 export function request(...options) {
-	let r = {}
+	let r = new Request('https://localhost/')
 	for (let option of options) {
 		if (typeof option == 'string' || option instanceof String) {
 			r = new Request(option, r)
 		} else if (option instanceof Request) {
-			r = new Request(r)
+			r = new Request(option)
 		} else if (option && typeof option == 'object') {
 			for (let param in option) {
 				if (!['method','headers','body','mode','credentials',
 					'cache','redirect','referrer','referrerPolicy','integrity',
-					'keepalive','signal','priority'].includes(param)) {
+					'keepalive','signal','priority','url'].includes(param)) {
 					throw metroError('metro.request: unknown request parameter '+metroURL+'request/unknown-param-name/', param)
 				}
 				switch(param) {
 					case 'headers':
-						r = new Request(r, parseHeadersParam(option.headers, r))
+						appendHeaders(r, option.headers)
 					break
 					case 'url':
-						r.url = metro.url(r.url, option.url)
+						let u = url(r.url, option.url)
+						r = new Request(u, r)
 					break
 					default:
 						if (typeof option[param] == 'function') {
@@ -113,10 +132,30 @@ export function request(...options) {
 	Object.freeze(r)
 	return new Proxy(r, {
 		get(target, prop, receiver) {
-			if (prop == 'with') {
-				return function(...options) {
-					return request(target, ...options)
-				}
+			switch(prop) {
+				case 'with':
+					return function(...options) {
+						return request(target, ...options)
+					}
+				break
+				case 'toString':
+				case 'toJSON':
+					return function() {
+						return target[prop].apply(target)
+					}
+				break
+				case 'clone':
+					return function() {	
+						return request(target)
+					}
+				break
+				case 'blob':
+				case 'text':
+				case 'json':
+					return function() {
+						return target[prop].apply(target)
+					}
+				break
 			}
 			return target[prop]
 		}
@@ -182,10 +221,18 @@ export function url(...options) {
 	Object.freeze(u)
 	return new Proxy(u, {
 		get(target, prop, receiver) {
-			if (prop == 'with') {
-				return function(...options) {
-					return url(target, ...options)
-				}
+			switch(prop) {
+				case 'with':
+					return function(...options) {
+						return url(target, ...options)
+					}
+				break
+				case 'toString':
+				case 'toJSON':
+					return function() {
+						return target[prop]()
+					}
+				break
 			}
 			return target[prop]
 		}
