@@ -96,12 +96,14 @@ function appendHeaders(req, headers) {
 
 export function request(...options) {
 	let r = new Request('https://localhost/')
+	let args
 	for (let option of options) {
 		if (typeof option == 'string' || option instanceof String) {
 			r = new Request(option, r)
 		} else if (option instanceof Request) {
 			r = new Request(option)
 		} else if (option && typeof option == 'object') {
+			args = {}
 			for (let param in option) {
 				if (!['method','headers','body','mode','credentials',
 					'cache','redirect','referrer','referrerPolicy','integrity',
@@ -118,14 +120,17 @@ export function request(...options) {
 					break
 					default:
 						if (typeof option[param] == 'function') {
-							r[param] = option[param](r[param], r)
-						} else if (typeof options[param] == 'string' || options[param] instanceof String ) {
-							r[param] = ''+options[param]
+							args[param] = option[param](r[param], r)
+						} else if (typeof option[param] == 'string' || option[param] instanceof String ) {
+							args[param] = ''+option[param]
 						} else {
-							r[param] = options[param]
+							args[param] = option[param]
 						}
 					break
 				}
+			}
+			if (args) {
+				r = new Request(r, args)
 			}
 		}
 	}
@@ -133,6 +138,9 @@ export function request(...options) {
 	return new Proxy(r, {
 		get(target, prop, receiver) {
 			switch(prop) {
+				case 'isProxy':
+					return true
+				break
 				case 'with':
 					return function(...options) {
 						return request(target, ...options)
@@ -154,6 +162,63 @@ export function request(...options) {
 				case 'json':
 					return function() {
 						return target[prop].apply(target)
+					}
+				break
+				case 'body':
+					// Request.body is always a ReadableStream
+					// which is a horrible API, if you want to
+					// allow middleware to alter the body
+					// so we keep the original body, wrap a Proxy
+					// around it to keep the ReadableStream api
+					// accessible, but allow access to the original
+					// body value as well
+					let body = args.body
+					if (!body) {
+						body = r.body
+					}
+					if (body) {
+						if (body.isProxy) {
+							return body
+						}
+						if (typeof body !== 'object') {
+							// Proxy forces us to make objects of string/number/boolean
+							// literals
+							switch(typeof body) {
+								case 'string':
+									body = new String(body)
+								break
+								case 'number':
+									body = new Number(body)
+								break
+								case 'boolean':
+									body = new Boolean(body)
+								break
+							}
+						}
+						return new Proxy(body, {
+							get(bodyTarget, prop, receiver) {
+								switch (prop) {
+									case 'isProxy':
+										return true
+									break
+									case 'getReader':
+									case 'cancel':
+									case 'pipeThrough':
+									case 'pipTo':
+									case 'tee':
+										return function(...args) {
+											return target.body[prop].apply(target.body, args)
+										}
+									break
+									case 'valueOf':
+										return function() {
+											return body.valueOf.apply(body)
+										}
+									break
+								}
+								return body[prop]
+							}
+						})
 					}
 				break
 			}
@@ -222,6 +287,9 @@ export function url(...options) {
 	return new Proxy(u, {
 		get(target, prop, receiver) {
 			switch(prop) {
+				case 'isProxy':
+					return true
+				break
 				case 'with':
 					return function(...options) {
 						return url(target, ...options)
