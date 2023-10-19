@@ -94,9 +94,46 @@ function appendHeaders(req, headers) {
 	})
 }
 
+function bodyProxy(body, req) {
+	return new Proxy(req.body, {
+		get(target, prop, receiver) {
+			if (prop in target && prop != 'toString') {
+				// skipped toString, since it has no usable output
+				// and body may have its own toString
+				if (typeof target[prop] == 'function') {
+					return function(...args) {
+						return target[prop].apply(target, args)
+					}
+				}
+				return target[prop]
+			}
+			if (typeof body == 'object') {
+				if (prop in body) {
+					if (typeof body[prop] == 'function') {
+						return function(...args) {
+							return body[prop].apply(body, args)
+						}
+					}
+					return body[prop]
+				}
+			}
+			switch (prop) {
+				case 'isProxy':
+					return true
+				break
+				case 'toString':
+					return function() {
+						return ''+body
+					}
+				break
+			}
+		}
+	})
+}
+
 export function request(...options) {
 	let r = new Request('https://localhost/')
-	let args, body
+	let args, body, method = r.method
 	for (let option of options) {
 		if (typeof option == 'string' || option instanceof String) {
 			r = new Request(option, r)
@@ -118,19 +155,30 @@ export function request(...options) {
 						let u = url(r.url, option.url)
 						r = new Request(u, r)
 					break
+					case 'method':
+						// keep track of latest method
+						// so you can set a body
+						args.method = option.method
+						method = args.method
+					break
+					case 'body':
+						if (option.method) {
+							method = option.method
+						}
+						if (typeof option.body == 'function') {
+							body = option.body(body || r.body, r)
+						} else {
+							body = option.body
+						}
+						let newOptions = {body:body}
+						if (method != r.method) {
+							newOptions.method = method
+						}
+						r = new Request(r, newOptions)
+					break
 					default:
 						if (typeof option[param] == 'function') {
-							let paramValue
-							if (param=='body') {
-								if (body) {
-									paramValue = body
-								} else {
-									paramValue = r.body
-								}
-							} else {
-								paramValue = r[param]
-							}
-							args[param] = option[param](paramValue, r)
+							args[param] = option[param](r[param], r)
 						} else if (typeof option[param] == 'string' || option[param] instanceof String ) {
 							args[param] = ''+option[param]
 						} else {
@@ -186,51 +234,13 @@ export function request(...options) {
 					// accessible, but allow access to the original
 					// body value as well
 					if (!body) {
-						body = r.body
+						body = target.body
 					}
 					if (body) {
 						if (body.isProxy) {
 							return body
 						}
-						if (typeof body !== 'object') {
-							// Proxy forces us to make objects of string/number/boolean
-							// literals
-							switch(typeof body) {
-								case 'string':
-									body = new String(body)
-								break
-								case 'number':
-									body = new Number(body)
-								break
-								case 'boolean':
-									body = new Boolean(body)
-								break
-							}
-						}
-						return new Proxy(body, {
-							get(bodyTarget, prop, receiver) {
-								switch (prop) {
-									case 'isProxy':
-										return true
-									break
-									case 'getReader':
-									case 'cancel':
-									case 'pipeThrough':
-									case 'pipTo':
-									case 'tee':
-										return function(...args) {
-											return target.body[prop].apply(target.body, args)
-										}
-									break
-									case 'valueOf':
-										return function() {
-											return body.valueOf.apply(body)
-										}
-									break
-								}
-								return body[prop]
-							}
-						})
+						return bodyProxy(body, target)
 					}
 				break
 			}

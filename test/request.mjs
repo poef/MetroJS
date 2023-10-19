@@ -41,7 +41,7 @@ tap.test('bodyFormData', t => {
 		method: 'POST',
 		body: fd
 	})
-	t.ok(req.body instanceof FormData)
+	t.ok(req.body instanceof ReadableStream)
 	t.equal(req.body.get('foo'), 'bar')
 	t.end()
 })
@@ -90,3 +90,4 @@ tap.test('text', async t => {
 	t.equal(s, 'This is the body')
 	t.end()
 })
+
