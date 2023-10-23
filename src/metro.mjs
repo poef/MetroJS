@@ -1,7 +1,10 @@
 const metroURL = 'https://metro.muze.nl/details/'
 
+
 class Client {
-	#options = {}
+	#options = {
+		baseURL: 'https://localhost'
+	}
 	#verbs = ['get','post','put','delete','patch','head','options','query']
 
 	constructor(...options) {
@@ -12,22 +15,11 @@ class Client {
 			} else if (option instanceof Client) {
 				Object.assign(this.#options, option.#options)
 			} else if (option instanceof Function) {
-				Object.assign(this.#options, option(this.#options))
+				this.#addMiddlewares([option])
 			} else if (option && typeof option == 'object') {
 				for (let param in option) {
 					if (param == 'middlewares') {
-						if (typeof option.middlewares == 'function') {
-							option.middlewares = [ option.middlewares ]
-						}
-						let index = option.middlewares.findIndex(m => typeof m != 'function')
-						if (index>=0) {
-							throw metroError('metro.client: middlewares must be a function or an array of functions '
-								+metroURL+'client/invalid-middlewares-value/', option.middlewares[index])
-						}
-						if (!Array.isArray(this.#options.middlewares)) {
-							this.#options.middlewares = []
-						}
-						this.#options.middlewares = this.#options.middlewares.concat(option.middlewares)
+						this.#addMiddlewares(option[param])
 					} else if (typeof option[param] == 'function') {
 						this.#options[param] = option[param](this.#options[param], this.#options)
 					} else {
@@ -46,6 +38,21 @@ class Client {
 			}
 		}
 		Object.freeze(this)
+	}
+
+	#addMiddlewares(middlewares) {
+		if (typeof middlewares == 'function') {
+			middlewares = [ middlewares ]
+		}
+		let index = middlewares.findIndex(m => typeof m != 'function')
+		if (index>=0) {
+			throw metroError('metro.client: middlewares must be a function or an array of functions '
+				+metroURL+'client/invalid-middlewares-value/', middlewares[index])
+		}
+		if (!Array.isArray(this.#options.middlewares)) {
+			this.#options.middlewares = []
+		}
+		this.#options.middlewares = this.#options.middlewares.concat(middlewares)
 	}
 
 	#fetch(req) {
@@ -85,26 +92,26 @@ export function client(...options) {
 	return new Client(...options)
 }
 
-function appendHeaders(req, headers) {
+function appendHeaders(r, headers) {
 	if (!Array.isArray(headers)) {
 		headers = [headers]
 	}
 	headers.forEach((header) => {
 		if (typeof header == 'function') {
-			let result = header(req.headers, req)
+			let result = header(r.headers, r)
 			if (result) {
 				req.headers = result
 			}
 		} else {
 			Object.entries(header).forEach(([name,value]) => {
-				req.headers.append(name, value)
+				r.headers.append(name, value)
 			})
 		}
 	})
 }
 
-function bodyProxy(body, req) {
-	return new Proxy(req.body, {
+function bodyProxy(body, r) {
+	return new Proxy(r.body, {
 		get(target, prop, receiver) {
 			if (prop in target && prop != 'toString') {
 				// skipped toString, since it has no usable output
@@ -258,6 +265,76 @@ export function request(...options) {
 		}
 	})
 }
+
+export function response(...options) {
+	let r = new Response()
+	let args,body
+	for (let option of options) {
+		if (typeof option == 'string' || option instanceof String) {
+			body = option
+			r = new Response(option, r)
+		} else if (option instanceof Response) {
+			if (option.body && option.body.isProxy) {
+				body = option.body
+			}
+			r = new Response(option)
+		} else if (option && typeof option == 'object') {
+			args = {}
+			for (let param in option) {
+				if (!['status','headers','body'].includes(param)) {
+					throw metroError('metro.response: unknown response parameter '+metroURL+'response/unknown-param-name/', param)
+				}
+				switch(param) {
+					case 'headers':
+						appendHeaders(option.headers, r)
+					break
+					case 'status':
+						args.status = option.status
+					break
+					case 'body':
+						body = option[param]
+						r = new Response(option[param], r)
+					break
+				}
+			}
+		}
+	}
+	if (args) {
+		r = new Reponse(r, args)
+	}
+	Object.freeze(r)
+	return new Proxy(r, {
+		get(target, prop, receiver) {
+			if (prop == 'body') {
+				if (!body) {
+					body = target.body
+				}
+				if (body) {
+					if (body.isProxy) {
+						return body
+					}
+					return bodyProxy(body, target)
+				}
+			}
+			if (prop in target && prop != 'toString') {
+				// skipped toString, since it has no usable output
+				// and body may have its own toString
+				if (typeof target[prop] == 'function') {
+					return function(...args) {
+						return target[prop].apply(target, args)
+					}
+				}
+				return target[prop]
+			}
+			switch(prop) {
+				case 'isProxy':
+					return true
+				break
+			}
+		}
+	})
+}
+
 
 function appendSearchParams(url, params) {
 	if (typeof params == 'function') {

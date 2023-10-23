@@ -13,3 +13,11 @@ tap.test('start', async t => {
 	t.equal(content, 'This is the body')
 	t.end()
 })
+
+tap.test('withFunction', async t => {
+	let c = metro.client()
+	c = c.with((req,next) => metro.response('This is the body'))
+	let res = await c.get('foo/')
+	t.equal(''+res.body, 'This is the body')
+	t.end()
+})
