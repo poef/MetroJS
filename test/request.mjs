@@ -76,7 +76,7 @@ tap.test('clone', t => {
 		body: 'This is the body'
 	})
 	let req2 = req.clone()
-	t.notEqual(req, req2)
+	t.not(req, req2)
 	t.equal(req.url, req2.url)
 	t.end()
 })
