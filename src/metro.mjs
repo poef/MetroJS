@@ -1,11 +1,12 @@
 const metroURL = 'https://metro.muze.nl/details/'
 
-
 class Client {
 	#options = {
 		baseURL: 'https://localhost'
 	}
 	#verbs = ['get','post','put','delete','patch','head','options','query']
+
+	static tracers = {}
 
 	constructor(...options) {
 		this.#options.verbs = this.#verbs
@@ -62,23 +63,26 @@ class Client {
 		let middlewares = this.#options?.middlewares?.slice() || []
 		let options = this.#options
 		let middlewareIndex = 0
-		let next = async function next(req) {
-			let result, group = 'get '+middlewareIndex++
-			if (options.trace) {
-				metroConsole.group(group)
-				metroConsole.info(req)				
+		let next = async function next(request) {
+			let response
+			let tracers = Object.values(Client.tracers)
+			for(let tracer of tracers) {
+				if (tracer.request) {
+					tracer.request.call(tracer, request)
+				}
 			}
 			let middleware = middlewares.pop()
 			if (!middleware) {
-				result = await fetch(req)
+				response = await fetch(request)
 			} else {
-				result = await middleware(req, next, options)
+				response = await middleware(request, next, options)
 			}
-			if (options.trace) {
-				metroConsole.info(result)
-				metroConsole.groupEnd(group)
+			for(let tracer of tracers) {
+				if (tracer.response) {
+					tracer.response.call(tracer, response)
+				}
 			}
-			return result
+			return response
 		}
 		return next(req)
 	}
@@ -437,7 +441,35 @@ const metroConsole = {
 	}
 }
 
-function metroError(message, ...details) {
+export function metroError(message, ...details) {
 	metroConsole.error(message, ...details)
 	return new Error(message, ...details)
+}
+
+
+export const trace = {
+	add(name, tracer) {
+		Client.tracers[name] = tracer
+	},
+	delete(name) {
+		delete Client.tracers[name]
+	},
+	clear() {
+		Client.tracers = {}
+	},
+	group() {
+		let group = 0;
+		return {
+			request: (req) => {
+				group++
+				metroConsole.group(group)
+				metroConsole.info(req.url)				
+			},
+			response: (res) => {
+				metroConsole.info(res.body)
+				metroConsole.groupEnd(group)
+				group--
+			}
+		}
+	}
 }
