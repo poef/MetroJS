@@ -89,6 +89,19 @@ export function optional(pattern) {
 	}
 }
 
+export function oneOf(...patterns) {
+	return function(data) {
+		for(let pattern of patterns) {
+			if (!fails(data, pattern)) {
+				return false
+			}
+		}
+		let result = new Boolean(true)
+    	result.problems = ['data does not match oneOf patterns']
+    	return result
+	}
+}
+
 class assertError {
 	constructor(problems) {
 		this.problems = problems

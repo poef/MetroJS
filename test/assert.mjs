@@ -74,3 +74,28 @@ tap.test('optional2', t => {
 	t.equal(result.problems.length, 1)
 	t.end()
 })
+
+tap.test('oneOf', t => {
+	let source = {
+		foo: 'bar'
+	}
+	let expect = {
+		foo: assert.oneOf('baz','bar')
+	}
+	let result = assert.fails(source, expect)
+	t.equal(result, false)
+	t.end()
+})
+
+tap.test('oneOf2', t => {
+	let source = {
+		foo: 'bar'
+	}
+	let expect = {
+		foo: assert.oneOf('baz','bax')
+	}
+	let result = assert.fails(source, expect)
+	t.ok(result)
+	t.equal(result.problems.length, 1)
+	t.end()	
+})
