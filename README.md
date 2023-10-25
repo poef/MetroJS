@@ -34,6 +34,7 @@ The signature for a middleware function is:
    let response = await next(request)
    // alter response
    return response
+}
 ```
 
 However, both request and response are immutable. You can not change them. You can 
