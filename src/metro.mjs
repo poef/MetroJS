@@ -56,9 +56,9 @@ class Client {
 		this.#options.middlewares = this.#options.middlewares.concat(middlewares)
 	}
 
-	#fetch(req) {
-		if (!req.url) {
-			throw metroError('metro.client.'+r.method.toLowerCase()+': Missing url parameter '+metroURL+'client/missing-url-param/', req)
+	#fetch(request) {
+		if (!request.url) {
+			throw metroError('metro.client.'+r.method.toLowerCase()+': Missing url parameter '+metroURL+'client/missing-url-param/', request)
 		}
 		let middlewares = this.#options?.middlewares?.slice() || []
 		let options = this.#options
@@ -84,7 +84,7 @@ class Client {
 			}
 			return response
 		}
-		return next(req)
+		return next(request)
 	}
 
 	with(...options) {
@@ -104,19 +104,26 @@ function appendHeaders(r, headers) {
 		if (typeof header == 'function') {
 			let result = header(r.headers, r)
 			if (result) {
-				req.headers = result
+				if (!Array.isArray(result)) {
+					result = [result]
+				}
+				headers = headers.concat(result)
 			}
-		} else {
-			Object.entries(header).forEach(([name,value]) => {
-				r.headers.append(name, value)
-			})
 		}
+	})
+	headers.forEach((header) => {
+		Object.entries(header).forEach(([name,value]) => {			
+			r.headers.append(name, value)
+		})
 	})
 }
 
 function bodyProxy(body, r) {
 	return new Proxy(r.body, {
 		get(target, prop, receiver) {
+			if (prop=='source') {
+				return body
+			}
 			if (prop in target && prop != 'toString') {
 				// skipped toString, since it has no usable output
 				// and body may have its own toString
@@ -271,40 +278,79 @@ export function request(...options) {
 }
 
 export function response(...options) {
-	let r = new Response()
-	let args,body
+	let r = {}
+	let args = {
+		headers: {}
+	}
+	let body,mock={}
 	for (let option of options) {
-		if (typeof option == 'string' || option instanceof String) {
+		if (typeof option == 'string' 
+			|| option instanceof String
+			|| option instanceof FormData
+			|| option instanceof Blob
+			|| option instanceof ArrayBuffer
+			|| option instanceof DataView
+			|| option instanceof ReadableStream
+			|| option instanceof URLSearchParams
+		) {
 			body = option
-			r = new Response(option, r)
+			r = new Response(option, {
+				status: r.status,
+				statusText: r.statusText,
+				headers: r.headers
+			})
 		} else if (option instanceof Response) {
-			if (option.body && option.body.isProxy) {
+			if (typeof option.body == 'function') {
+				body = option.body(body || r.body, r)
+			} else if (option.body) {
 				body = option.body
 			}
-			r = new Response(option)
+			if (option.isProxy) {
+				for (let param of ['url','type','redirected']) {
+					if (typeof option[param] != 'undefined') {
+						mock[param] = option[param]
+					}
+				}
+			}
+			r = new Response(body, {
+				status: option.status,
+				statusText: option.statusText,
+			})
+			Object.assign(args.headers, Object.fromEntries(option.headers.entries()))
 		} else if (option && typeof option == 'object') {
-			args = {}
 			for (let param in option) {
-				if (!['status','headers','body'].includes(param)) {
+				if (!['status','statusText','headers','body','url','type','redirected'].includes(param)) {
 					throw metroError('metro.response: unknown response parameter '+metroURL+'response/unknown-param-name/', param)
 				}
 				switch(param) {
 					case 'headers':
-						appendHeaders(option.headers, r)
+						Object.assign(args.headers, option.headers)
 					break
 					case 'status':
-						args.status = option.status
+					case 'statusText':
+						args[param] = option[param]
+					break
+					case 'url':
+					case 'type':
+					case 'redirected':
+						mock[param] = option[param]
 					break
 					case 'body':
-						body = option[param]
-						r = new Response(option[param], r)
+						if (typeof option.body == 'function') {
+							body = option.body(body || r.body, r)
+						} else {
+							body = option.body
+						}
+						r = new Response(option[param])
 					break
 				}
 			}
+		} else {
+			throw new Error('Unknown parameter type',option)
 		}
 	}
 	if (args) {
-		r = new Reponse(r, args)
+		r = new Response(body, args)
 	}
 	Object.freeze(r)
 	return new Proxy(r, {
@@ -319,6 +365,12 @@ export function response(...options) {
 					}
 					return bodyProxy(body, target)
 				}
+			}
+			if (prop == 'ok') {
+				return (target.status>=200) && (target.status<400)
+			}
+			if (prop in mock && prop != 'toString') {
+				return mock[prop]
 			}
 			if (prop in target && prop != 'toString') {
 				// skipped toString, since it has no usable output
