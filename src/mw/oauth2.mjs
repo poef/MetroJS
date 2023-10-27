@@ -83,7 +83,7 @@ export default async function oauth2mw(oauth2) {
 	function getAuthTokenURL(url) {
 		url = metro.url(url, {hash: ''})
 		assert.check(oauth2, {
-			client_id: /.+/
+			client_id: /.+/,
 			authRedirectURL: /.+/,
 			scope: /.*/
 		})
