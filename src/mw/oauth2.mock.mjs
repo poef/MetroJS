@@ -16,10 +16,10 @@ const badRequest = (error) => {
 		headers: {
 			'Content-Type':'application/json'
 		},
-		body: {
+		body: JSON.stringify({
 			error: 'invalid_request',
 			error_description: error
-		}
+		})
 	}
 }
 
@@ -37,10 +37,10 @@ export default function oauth2mock(req, next) {
 				return metro.response(badRequest(error))
 			}
 			return metro.response(baseResponse, {
-				body: {
+				body: JSON.stringify({
 					code: 'mockAuthorizeToken',
 					state: url.searchParams.get('state')
-				}
+				})
 			})
 		break
 		case '/token/':
@@ -58,17 +58,18 @@ export default function oauth2mock(req, next) {
 				return metro.response(badRequest(error))
 			}
 			return metro.response(baseResponse, {
-				body: {
+				body: JSON.stringify({
 					access_token: 'mockAccessToken',
 					token_type: 'mockExample',
 					expires_in: 3600,
 					refresh_token: 'mockRefreshToken',
 					example_parameter: 'mockExampleValue'
-				}
+				})
 			})
 		break
 		case '/protected/':
-			token = url.searchParams.get('access_token')
+			let auth = req.headers.get('Authorization')
+			let [type,token] = auth.split(' ')
 			if (!token || token!=='mockAccessToken') {
 				return metro.response({
 					status: 401,
@@ -76,23 +77,20 @@ export default function oauth2mock(req, next) {
 					body: '401 Forbidden'
 				})
 			}
-			return metro.response({
-				body: {
+			return metro.response(baseResponse, {
+				body: JSON.stringify({
 					result: 'Success'
-				}
+				})
 			})
 		break
 		case '/public/':
-			token = url.searchParams.get('access_token')
-			return metro.response({
-				body: {
-					result: 'Success',
-					token: token
-				}
+			return metro.response(baseResponse, {
+				body: JSON.stringify({
+					result: 'Success'
+				})
 			})
 		break
 		default:
-			console.log('mock oauth2 request url', url.pathname)
 			return metro.response({
 				status: 404,
 				statusText: 'not found',
