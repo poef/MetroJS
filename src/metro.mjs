@@ -62,7 +62,6 @@ class Client {
 		}
 		let middlewares = this.#options?.middlewares?.slice() || []
 		let options = this.#options
-		let middlewareIndex = 0
 		let next = async function next(request) {
 			let response
 			let tracers = Object.values(Client.tracers)
@@ -75,7 +74,7 @@ class Client {
 			if (!middleware) {
 				response = await fetch(request)
 			} else {
-				response = await middleware(request, next, options)
+				response = await middleware(request, next)
 			}
 			for(let tracer of tracers) {
 				if (tracer.response) {
