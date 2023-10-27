@@ -10,3 +10,19 @@ tap.test('start', async t => {
 	t.ok(res.ok)
 	t.end()
 })
+
+tap.test('oauth2start', async t => {
+	const oauth2client = client.with(oauth2mw({
+		access_token: {
+			type: 'Bearer',
+			value: 'mockAccessToken'
+		},
+		force_authorization: true
+	}))
+
+	let res = await oauth2client.get('/protected/')
+	t.ok(res.ok)
+	let json = await res.json()
+	t.equal(json.result,'Success')
+	t.end()
+})
