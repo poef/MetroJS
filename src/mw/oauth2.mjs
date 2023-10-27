@@ -1,31 +1,59 @@
 import * as metro from '../metro.mjs'
 import * as assert from '../assert.mjs'
 
-export default async function oauth2mw(oauth2) {
+export default function oauth2mw(options) {
 
-	const defaults = {
-		token: {},
+	const oauth2 = {
+		tokens: new Map(),
 		endpoints: {},
 		client: metro.client(),
 		client_id: '',
-		client_secret: ''
+		client_secret: '',
+		force_authorization: false
 	}
-	oauth2 = Object.assign({}, defaults, oauth2 || {})
+
+	for (let option in options) {
+		switch(option) {
+			case 'access_token':
+			case 'authorization_code':
+			case 'refresh_token':
+				oauth2.tokens.set(option, options[option])
+			break
+			case 'client':
+			case 'client_id':
+			case 'client_secret':
+			case 'force_authorization':
+				oauth2[option] = options[option]
+			break
+			case 'tokens':
+				if (typeof options.tokens.set == 'function' && 
+					typeof options.tokens.get == 'function' && 
+					typeof options.tokens.has == 'function' ) {
+					oauth2.tokens = option.tokens
+				} else if (options.tokens && typeof options.tokens == 'object') {
+					for (let token in options.tokens) {
+						oauth2.tokens.set(token, options.tokens[token])
+					}
+				}
+			break
+			default:
+				throw new metro.metroError('Unknown oauth2mw option',option)
+			break
+		}
+	}
 
 	async function oauth2authorized(req, next) {
-		oauth2.tokens = oauth2.tokenStore.get(req)
-		if (!oauth2.tokens.access) {
-			let res = await fetchToken(req)
-			oauth2.tokenStore.set(req, oauth2.tokens)
+		if (!oauth2.tokens.has('access_token')) {
+			await fetchToken(req)
 			return oauth2authorized(req, next)
 		} else if (isExpired(req)) {
-			let res = await refreshToken(req)
-			oauth2.tokenStore.set(req, oauth2.tokens)
+			await refreshToken(req)
 			return oauth2authorized(req, next)
 		} else {
+			let accessToken = oauth2.tokens.get('access_token')
 			req = metro.request(req, {
 				headers: {
-					Authorization: oauth2.tokens.access.type+' '+oauth2.tokens.access.value
+					Authorization: accessToken.type+' '+accessToken.value
 				}
 			})
 			return next(req)
@@ -33,13 +61,13 @@ export default async function oauth2mw(oauth2) {
 	}
 
 	async function fetchToken(req) {
-		if (oauth2.grant_type === 'authorization_code' && !ouath2.tokens.authorization) {
+		if (oauth2.grant_type === 'authorization_code' && !ouath2.tokens.has('authorization_code')) {
 			let authReqURL = getAuthTokenURL(oauth2.endpoints.authorize)
 			if (!oauth2.callbacks.authorize || typeof oauth2.callbacks.authorize !== 'function') {
 				throw metro.metroError('oauth2mw: oauth2 with grant_type:authorization_code requires a callback function in client options.oauth2.callbacks.authorize')
 			}
 			let token = await oauth2.options.callbacks.authorize(authReqURL)
-			oauth2.tokens.authorization = token
+			oauth2.tokens.set('authorization_code', token)
 		}
 		let tokenReq = getAccessTokenRequest(oauth2.endpoints.token)
 		let response = await oauth2.client.post(tokenReq)
@@ -47,14 +75,14 @@ export default async function oauth2mw(oauth2) {
 			throw metro.metroError(response.status+':'+response.statusText, await response.text())
 		}
 		let data = await response.json()
-		oauth2.tokens.access = {
+		oauth2.tokens.set('access_token', {
 			value: data.access_token,
 			expires: getExpires(data.expires_in),
 			type: data.token_type,
 			scope: data.scope
-		}
+		})
 		if (data.refresh_token) {
-			oauth2.tokens.refresh = data.refresh_token
+			oauth2.tokens.set('refresh', data.refresh_token)
 		}
 		return data
 	}
@@ -67,14 +95,14 @@ export default async function oauth2mw(oauth2) {
 			throw metro.metroError(res.status+':'+res.statusText, await res.text())
 		}
 		let data = await response.json()
-		oauth2.tokens.access = {
+		oauth2.tokens.set('access_token', {
 			value:   data.access_token,
 			expires: getExpires(data.expires_in),
 			type:    data.token_type,
 			scope:   data.scope
-		}
+		})
 		if (data.refresh_token) {
-			oauth2.tokens.refresh = data.refresh_token
+			oauth2.tokens.set('refresh_token', data.refresh_token)
 		}
 		return data
 	}
@@ -125,7 +153,7 @@ export default async function oauth2mw(oauth2) {
 				if (qauth2.redirect_uri) {
 					params.redirect_uri = oauth2.redirect_uri
 				}
-				params.code = oauth2.tokens.authorization
+				params.code = oauth2.tokens.get('authorization')
 				params.response_type = 'token' // spec #3.1.1
 			break
 			case 'client_credentials':
@@ -164,7 +192,7 @@ export default async function oauth2mw(oauth2) {
 	}
 
 	return async function(req, next) {
-		if (options && options.forceAuthorization) {
+		if (oauth2.force_authorization) {
 			return oauth2authorized(req, next)
 		}
 		let res = await next(req)
