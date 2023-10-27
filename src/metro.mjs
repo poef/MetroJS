@@ -1,8 +1,13 @@
 const metroURL = 'https://metro.muze.nl/details/'
 
+export const symbols = {
+	isProxy: Symbol('isProxy'),
+	source: Symbol('source')
+}
+
 class Client {
 	#options = {
-		baseURL: 'https://localhost'
+		baseURL: typeof window != 'undefined' ? window.location : 'https://localhost'
 	}
 	#verbs = ['get','post','put','delete','patch','head','options','query']
 
@@ -72,6 +77,12 @@ class Client {
 			}
 			let middleware = middlewares.pop()
 			if (!middleware) {
+				if (request[symbols.isProxy]) {
+					// even though a Proxy is supposed to be 'invisible'
+					// fetch() doesn't work with the proxy (in Firefox), 
+					// you need the actual Request object here
+					request = request[symbols.source]
+				}
 				response = await fetch(request)
 			} else {
 				response = await middleware(request, next)
@@ -120,7 +131,7 @@ function appendHeaders(r, headers) {
 function bodyProxy(body, r) {
 	return new Proxy(r.body, {
 		get(target, prop, receiver) {
-			if (prop=='source') {
+			if (prop==symbols.source) {
 				return body
 			}
 			if (prop in target && prop != 'toString') {
@@ -144,8 +155,11 @@ function bodyProxy(body, r) {
 				}
 			}
 			switch (prop) {
-				case 'isProxy':
+				case symbols.isProxy:
 					return true
+				break
+				case symbols.source: 
+					return target
 				break
 				case 'toString':
 					return function() {
@@ -179,7 +193,7 @@ export function request(...options) {
 						appendHeaders(r, option.headers)
 					break
 					case 'url':
-						let u = url(r.url, option.url)
+						let u = url(r.url, ''+option.url)
 						r = new Request(u, r)
 					break
 					case 'method':
@@ -226,7 +240,10 @@ export function request(...options) {
 	return new Proxy(r, {
 		get(target, prop, receiver) {
 			switch(prop) {
-				case 'isProxy':
+				case symbols.source:
+					return target
+				break
+				case symbols.isProxy:
 					return true
 				break
 				case 'with':
@@ -264,7 +281,7 @@ export function request(...options) {
 						body = target.body
 					}
 					if (body) {
-						if (body.isProxy) {
+						if (body[symbols.isProxy]) {
 							return body
 						}
 						return bodyProxy(body, target)
@@ -352,14 +369,14 @@ export function response(...options) {
 		r = new Response(body, args)
 	}
 	Object.freeze(r)
+	if (!body) {
+		body = target.body
+	}
 	return new Proxy(r, {
 		get(target, prop, receiver) {
 			if (prop == 'body') {
-				if (!body) {
-					body = target.body
-				}
 				if (body) {
-					if (body.isProxy) {
+					if (body[symbols.isProxy]) {
 						return body
 					}
 					return bodyProxy(body, target)
@@ -382,8 +399,11 @@ export function response(...options) {
 				return target[prop]
 			}
 			switch(prop) {
-				case 'isProxy':
+				case symbols.isProxy:
 					return true
+				break
+				case symbols.source:
+					return target
 				break
 			}
 		}
@@ -451,8 +471,11 @@ export function url(...options) {
 	return new Proxy(u, {
 		get(target, prop, receiver) {
 			switch(prop) {
-				case 'isProxy':
+				case symbols.isProxy:
 					return true
+				break
+				case symbols.source:
+					return target
 				break
 				case 'with':
 					return function(...options) {
