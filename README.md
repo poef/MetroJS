@@ -1,5 +1,7 @@
 # MetroJS: HTTPS Client with middleware
 
+[![Project stage: Concept][project-stage-badge: Concept]][project-stage-page]
+
 ```javascript
 import * as metro from '@muze-nl/metro'
 
@@ -43,3 +45,7 @@ however create a copy with some values different, using the `with()` function.
 Both metro.request() and metro.response() are compatible with the normal Request 
 and Response objects, used by the Fetch API. Any code that works with those, will work
 with the request and response objects in MetroJS.
+
+
+[project-stage-badge: Concept]: https://img.shields.io/badge/Project%20Stage-Concept-red.svg
+[project-stage-page]: https://blog.pother.ca/project-stages/
