@@ -29,41 +29,47 @@ export default function oauth2mock(req, next) {
 	let url = new URL(req.url)
 	switch(url.pathname) {
 		case '/authorize/':
-			expect = {
+			if (error = assert.fails(url.searchParams, {
 				response_type: 'code',
 				client_id: 'clientId',
 				state: /.*/
-			}
-			if (error = assert.fails(url.searchParams, expect)) {
+			})) {
 				return metro.response(badRequest(error))
 			}
 			return metro.response(baseResponse, {
 				body: {
-					code: 'authorizeToken',
+					code: 'mockAuthorizeToken',
 					state: url.searchParams.get('state')
 				}
 			})
 		break
 		case '/token/':
 			if (error = assert.fails(url.searchParams, {
-					grant_type: assert.oneOf('refresh_token','authorization_code')
-				})
-			) {
+				grant_type: assert.oneOf('refresh_token','authorization_code')
+			})) {
 				return metro.response(badRequest(error))
 			}
-			expect = {
+			if (error = assert.fails(url.searchParams, {
 				grant_type: 'refresh_token',
-				refresh_token: 'refresh',
-				client_id: 'clientId',
-				client_secret: 'clientSecret'
-			}
-			if (error = assert.fails(url.searchParams, expect)) {
+				refresh_token: 'mockRefresh',
+				client_id: 'mockClientId',
+				client_secret: 'mockClientSecret'
+			})) {
 				return metro.response(badRequest(error))
 			}
+			return metro.response(baseResponse, {
+				body: {
+					access_token: 'mockAccessToken',
+					token_type: 'mockExample',
+					expires_in: 3600,
+					refresh_token: 'mockRefreshToken',
+					example_parameter: 'mockExampleValue'
+				}
+			})
 		break
 		case '/protected/':
 			token = url.searchParams.get('access_token')
-			if (!token || token!=='accessToken') {
+			if (!token || token!=='mockAccessToken') {
 				return metro.response({
 					status: 401,
 					statusText: 'Forbidden',

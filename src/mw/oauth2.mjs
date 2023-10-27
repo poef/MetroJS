@@ -6,20 +6,22 @@ export default async function oauth2mw(oauth2) {
 	const defaults = {
 		token: {},
 		endpoints: {},
-		client: metro.client()
+		client: metro.client(),
+		client_id: '',
+		client_secret: ''
 	}
 	oauth2 = Object.assign({}, defaults, oauth2 || {})
 
 	async function oauth2authorized(req, next) {
 		oauth2.tokens = oauth2.tokenStore.get(req)
 		if (!oauth2.tokens.access) {
-			let res = await fetchToken(req, oauth2)
+			let res = await fetchToken(req)
 			oauth2.tokenStore.set(req, oauth2.tokens)
-			return oauth2authorized(req, next, oauth2)
+			return oauth2authorized(req, next)
 		} else if (isExpired(req)) {
-			let res = await refreshToken(req, oauth2)
+			let res = await refreshToken(req)
 			oauth2.tokenStore.set(req, oauth2.tokens)
-			return oauth2authorized(req, next, oauth2)
+			return oauth2authorized(req, next)
 		} else {
 			req = metro.request(req, {
 				headers: {
@@ -39,17 +41,12 @@ export default async function oauth2mw(oauth2) {
 			let token = await oauth2.options.callbacks.authorize(authReqURL)
 			oauth2.tokens.authorization = token
 		}
-		let tokenReq = metro.request({
-			url: getAccessTokenURL(oauth2.endpoints.token),
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded'
-			}
-		})
-		let res = await oauth2.client.get(req)
-		if (!res.ok) {
-			throw metro.metroError(res.status+':'+res.statusText, await res.text())
+		let tokenReq = getAccessTokenRequest(oauth2.endpoints.token)
+		let response = await oauth2.client.post(tokenReq)
+		if (!response.ok) {
+			throw metro.metroError(response.status+':'+response.statusText, await response.text())
 		}
-		let data = await res.json()
+		let data = await response.json()
 		oauth2.tokens.access = {
 			value: data.access_token,
 			expires: getExpires(data.expires_in),
@@ -62,19 +59,38 @@ export default async function oauth2mw(oauth2) {
 		return data
 	}
 
+	async function refreshToken(req, next)
+	{
+		let refreshTokenReq = getAccessTokenRequest(oauth2.endpoints.token, 'refresh_token')
+		let response = await oauth2.client.post(refreshTokenReq)
+		if (!response.ok) {
+			throw metro.metroError(res.status+':'+res.statusText, await res.text())
+		}
+		let data = await response.json()
+		oauth2.tokens.access = {
+			value:   data.access_token,
+			expires: getExpires(data.expires_in),
+			type:    data.token_type,
+			scope:   data.scope
+		}
+		if (data.refresh_token) {
+			oauth2.tokens.refresh = data.refresh_token
+		}
+		return data
+	}
+
+
 	function getAuthTokenURL(url) {
 		url = metro.url(url, {hash: ''})
 		assert.check(oauth2, {
-			client: {
-				id: /.*/
-			},
-			authRedirectURL: /.*/,
+			client_id: /.+/
+			authRedirectURL: /.+/,
 			scope: /.*/
 		})
 		return metro.url(url, {
 			search: {
 				response_type: 'code',
-				client_id:     req.oauth2.client.id,
+				client_id:     req.oauth2.client_id,
 				redirect_uri:  req.oauth2.authRedirectURL,
 				scope:         req.oauth2.scope,
 				state:         createState(req)
@@ -83,21 +99,23 @@ export default async function oauth2mw(oauth2) {
 	}
 
 	function createState(req) {
-		const validChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-		let array = new Uint8Array(40);
-		window.crypto.getRandomValues(array);
-		array = array.map(x => validChars.charCodeAt(x % validChars.length));
-		const randomState = String.fromCharCode.apply(null, array);
+		const validChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+		let randomState = ''
+		let counter = 0
+	    while (counter < length) {
+	        randomState += characters.charAt(Math.floor(Math.random() * charactersLength))
+	        counter++
+	    }
 		req.oauth2.state = randomState;
 		return randomState;
 	}
 
-	function getAccessTokenURL(url) {
+	function getAccessTokenRequest(url, grant_type=null) {
 		url = metro.url(url, {hash: ''})
 		let params = {
-			grant_type:    oauth2.grant_type,
-			client_id:     oauth2.client.id,
-			client_secret: oauth2.client.secret
+			grant_type:    grant_type || oauth2.grant_type,
+			client_id:     oauth2.client_id,
+			client_secret: oauth2.client_secret
 		}
 		if (oauth2.scope) {
 			params.scope = oauth2.scope
@@ -117,8 +135,11 @@ export default async function oauth2mw(oauth2) {
 				throw new Error('Not yet implemented') // @TODO:
 			break
 		}
-		return metro.url(url, {
-			search: params
+		return metro.request(url, {
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded'
+			},
+			body: new FormData(params)
 		})
 	}
 
