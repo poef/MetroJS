@@ -327,7 +327,7 @@ export function response(...options) {
 			} else if (option.body) {
 				body = option.body
 			}
-			if (option.isProxy) {
+			if (option[symbols.isProxy]) {
 				for (let param of ['url','type','redirected']) {
 					if (typeof option[param] != 'undefined') {
 						mock[param] = option[param]
@@ -337,6 +337,7 @@ export function response(...options) {
 			r = new Response(body, {
 				status: option.status,
 				statusText: option.statusText,
+				headers: option.headers
 			})
 			Object.assign(args.headers, Object.fromEntries(option.headers.entries()))
 		} else if (option && typeof option == 'object') {
@@ -380,30 +381,6 @@ export function response(...options) {
 	}
 	return new Proxy(r, {
 		get(target, prop, receiver) {
-			if (prop == 'body') {
-				if (body) {
-					if (body[symbols.isProxy]) {
-						return body
-					}
-					return bodyProxy(body, target)
-				}
-			}
-			if (prop == 'ok') {
-				return (target.status>=200) && (target.status<400)
-			}
-			if (prop in mock && prop != 'toString') {
-				return mock[prop]
-			}
-			if (prop in target && prop != 'toString') {
-				// skipped toString, since it has no usable output
-				// and body may have its own toString
-				if (typeof target[prop] == 'function') {
-					return function(...args) {
-						return target[prop].apply(target, args)
-					}
-				}
-				return target[prop]
-			}
 			switch(prop) {
 				case symbols.isProxy:
 					return true
@@ -411,11 +388,37 @@ export function response(...options) {
 				case symbols.source:
 					return target
 				break
+				case 'body':
+					if (body) {
+						if (body[symbols.isProxy]) {
+							return body
+						}
+						return bodyProxy(body, target)
+					}
+				break
+				case 'ok':
+					return (target.status>=200) && (target.status<400)
+				break
+				default:
+					if (prop in mock && prop != 'toString') {
+						return mock[prop]
+					}
+					if (prop in target && prop != 'toString') {
+						// skipped toString, since it has no usable output
+						// and body may have its own toString
+						if (typeof target[prop] == 'function') {
+							return function(...args) {
+								return target[prop].apply(target, args)
+							}
+						}
+						return target[prop]
+					}
+				break
 			}
+			return undefined
 		}
 	})
 }
-
 
 function appendSearchParams(url, params) {
 	if (typeof params == 'function') {
