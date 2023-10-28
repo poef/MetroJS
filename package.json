@@ -9,6 +9,7 @@
   },
   "scripts": {
     "test": "tap test/*.mjs",
+    "tap": "tap",
     "build": "parcel build"
   },
   "repository": {
