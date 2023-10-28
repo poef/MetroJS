@@ -42,7 +42,24 @@ tap.test('bodyFormData', t => {
 		body: fd
 	})
 	t.ok(req.body instanceof ReadableStream)
+	t.ok(req.body[metro.symbols.source] instanceof FormData)
 	t.equal(req.body.get('foo'), 'bar')
+	t.end()
+})
+
+tap.test('bodyObject', t => {
+	let body = {
+		foo: "bar"
+	}
+	let req = metro.request('https://example.com', {
+		method: 'POST',
+		body: body
+	})
+	t.ok(req.body instanceof ReadableStream)
+	t.equal(req.body.foo, 'bar')
+	t.ok('foo' in req.body)
+	t.ok(Object.prototype.hasOwnProperty.call(req.body,'foo'))
+	t.ok(req.body.hasOwnProperty('foo'))
 	t.end()
 })
 

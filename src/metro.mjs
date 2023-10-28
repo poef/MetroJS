@@ -131,18 +131,18 @@ function appendHeaders(r, headers) {
 function bodyProxy(body, r) {
 	return new Proxy(r.body, {
 		get(target, prop, receiver) {
-			if (prop==symbols.source) {
-				return body
-			}
-			if (prop in target && prop != 'toString') {
-				// skipped toString, since it has no usable output
-				// and body may have its own toString
-				if (typeof target[prop] == 'function') {
-					return function(...args) {
-						return target[prop].apply(target, args)
+			switch (prop) {
+				case symbols.isProxy:
+					return true
+				break
+				case symbols.source:
+					return body
+				break
+				case 'toString':
+					return function() {
+						return ''+body
 					}
-				}
-				return target[prop]
+				break
 			}
 			if (typeof body == 'object') {
 				if (prop in body) {
@@ -154,19 +154,25 @@ function bodyProxy(body, r) {
 					return body[prop]
 				}
 			}
-			switch (prop) {
-				case symbols.isProxy:
-					return true
-				break
-				case symbols.source: 
-					return target
-				break
-				case 'toString':
-					return function() {
-						return ''+body
+			if (prop in target && prop != 'toString') {
+				// skipped toString, since it has no usable output
+				// and body may have its own toString
+				if (typeof target[prop] == 'function') {
+					return function(...args) {
+						return target[prop].apply(target, args)
 					}
-				break
+				}
+				return target[prop]
 			}
+		},
+		has(target, prop) {
+			return prop in body
+		},
+		ownKeys(target) {
+			return Reflect.ownKeys(body)
+		},
+		getOwnPropertyDescriptor(target, prop) {
+			return Object.getOwnPropertyDescriptor(body,prop)
 		}
 	})
 }
