@@ -39,7 +39,7 @@ class Client {
 		}
 		for (const verb of this.#options.verbs) {
 			this[verb] = async function(...options) {
-				options.push({method: verb.toUpperCase()})
+				options.unshift({method: verb.toUpperCase()})
 				return this.#fetch(request({url:this.#options.baseURL},...options))
 			}
 		}
@@ -83,7 +83,7 @@ class Client {
 					// you need the actual Request object here
 					request = request[symbols.source]
 				}
-				response = await fetch(request)
+				response = response(await fetch(request))
 			} else {
 				response = await middleware(request, next)
 			}
@@ -177,71 +177,61 @@ function bodyProxy(body, r) {
 	})
 }
 
-export function request(...options) {
-	let r = new Request('https://localhost/')
-	let args, body, method = r.method
-	for (let option of options) {
-		if (typeof option == 'string' || option instanceof String) {
-			let url = new URL(option, r.url)
-			r = new Request(url, r)
-		} else if (option instanceof Request) {
-			r = new Request(option)
-		} else if (option && typeof option == 'object') {
-			args = {}
-			for (let param in option) {
-				if (!['method','headers','body','mode','credentials',
-					'cache','redirect','referrer','referrerPolicy','integrity',
-					'keepalive','signal','priority','url'].includes(param)) {
-					throw metroError('metro.request: unknown request parameter '+metroURL+'request/unknown-param-name/', param)
-				}
-				switch(param) {
-					case 'headers':
-						appendHeaders(r, option.headers)
-					break
-					case 'url':
-						let u = url(r.url, ''+option.url)
-						r = new Request(u, r)
-					break
-					case 'method':
-						// keep track of latest method
-						// so you can set a body
-						args.method = option.method
-						method = args.method
-					break
-					case 'body':
-						if (option.method) {
-							method = option.method
-						}
-						if (typeof option.body == 'function') {
-							body = option.body(body || r.body, r)
-						} else {
-							body = option.body
-						}
-						let newOptions = {body:body}
-						if (method != r.method) {
-							newOptions.method = method
-						}
-						r = new Request(r, newOptions)
-					break
-					default:
-						if (typeof option[param] == 'function') {
-							args[param] = option[param](r[param], r)
-						} else if (typeof option[param] == 'string' || option[param] instanceof String ) {
-							args[param] = ''+option[param]
-						} else {
-							args[param] = option[param]
-						}
-					break
-				}
-			}
-			if (args) {
-				r = new Request(r, args)
-				if (args.body) {
-					body = args.body
-				}
+function getRequestParams(req, current) {
+	let params = current || {}
+	if (!params.url && current.url) {
+		params.url = current.url
+	}
+	// function to fetch all relevant properties of a Request
+	for(let prop of ['method','headers','body','mode','credentials','cache','redirect',
+		'referrer','referrerPolicy','integrity','keepalive','signal',
+		'priority','url']) {
+		if (typeof req[prop] == 'function') {
+			params[prop] = req[prop](params[prop], params)
+		} else if (typeof req[prop] != 'undefined') {
+			if (prop == 'url') {
+				params.url = new URL(req.url, params.url)
+			} else {
+				params[prop] = req[prop]
 			}
 		}
 	}
+	return params
+}
+
+export function request(...options) {
+	// the standard Request constructor is a minefield
+	// so first gather all the options together into a single
+	// javascript object, then set it in one go
+	let requestParams = {
+		url: typeof window != 'undefined' ? window.location : 'https://localhost/',
+		duplex: 'half' // required when setting body to ReadableStream, just set it here by default already
+	}
+	for (let option of options) {
+		if (typeof option == 'string') {
+			requestParams.url = new URL(option, requestParams.url)
+		} else if (option instanceof Request) {
+			Object.assign(requestParams, getRequestParams(option, requestParams))
+		} else if (option && typeof option == 'object') {
+			Object.assign(requestParams, getRequestParams(option, requestParams))
+		}
+	}
+	let body = requestParams.body
+	if (body) {
+		if (typeof body == 'object'
+			&& !(body instanceof String)
+			&& !(body instanceof ReadableStream)
+			&& !(body instanceof Blob)
+			&& !(body instanceof ArrayBuffer)
+			&& !(body instanceof DataView)
+			&& !(body instanceof FormData)
+			&& !(body instanceof URLSearchParams)
+			&& (typeof TypedArray=='undefined' || !(body instanceof TypedArray))
+		) {
+			requestParams.body = JSON.stringify(body)
+		}
+	}
+	let r = new Request(requestParams.url, requestParams)
 	Object.freeze(r)
 	return new Proxy(r, {
 		get(target, prop, receiver) {
@@ -261,11 +251,6 @@ export function request(...options) {
 				case 'toJSON':
 					return function() {
 						return target[prop].apply(target)
-					}
-				break
-				case 'clone':
-					return function() {	
-						return request(target)
 					}
 				break
 				case 'blob':
@@ -387,6 +372,11 @@ export function response(...options) {
 				break
 				case symbols.source:
 					return target
+				break
+				case 'with':
+					return function(...options) {
+						return response(target, ...options)
+					}
 				break
 				case 'body':
 					if (body) {
