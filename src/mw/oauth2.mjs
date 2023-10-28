@@ -1,12 +1,13 @@
 import * as metro from '../metro.mjs'
 import * as assert from '../assert.mjs'
+import jsonmw from './json.mjs'
 
 export default function oauth2mw(options) {
 
 	const oauth2 = {
 		tokens: new Map(),
 		endpoints: {},
-		client: metro.client(),
+		client: metro.client().with(jsonmw()),
 		client_id: '',
 		client_secret: '',
 		force_authorization: false
