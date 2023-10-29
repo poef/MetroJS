@@ -7,7 +7,7 @@ export const symbols = {
 
 class Client {
 	#options = {
-		baseURL: typeof window != 'undefined' ? window.location : 'https://localhost'
+		url: typeof window != 'undefined' ? window.location : 'https://localhost'
 	}
 	#verbs = ['get','post','put','delete','patch','head','options','query']
 
@@ -17,7 +17,7 @@ class Client {
 		this.#options.verbs = this.#verbs
 		for (let option of options) {
 			if (typeof option == 'string' || option instanceof String) {
-				this.#options.baseURL = ''+option
+				this.#options.url = ''+option
 			} else if (option instanceof Client) {
 				Object.assign(this.#options, option.#options)
 			} else if (option instanceof Function) {
@@ -40,7 +40,7 @@ class Client {
 		for (const verb of this.#options.verbs) {
 			this[verb] = async function(...options) {
 				return this.#fetch(request(
-					this.#options.baseURL,
+					this.#options.url,
 					...options,
 					{method: verb.toUpperCase()}
 				))
@@ -64,40 +64,40 @@ class Client {
 		this.#options.middlewares = this.#options.middlewares.concat(middlewares)
 	}
 
-	#fetch(request) {
-		if (!request.url) {
-			throw metroError('metro.client.'+r.method.toLowerCase()+': Missing url parameter '+metroURL+'client/missing-url-param/', request)
+	#fetch(req) {
+		if (!req.url) {
+			throw metroError('metro.client.'+r.method.toLowerCase()+': Missing url parameter '+metroURL+'client/missing-url-param/', req)
 		}
 		let middlewares = this.#options?.middlewares?.slice() || []
 		let options = this.#options
-		let next = async function next(request) {
-			let response
+		let next = async function next(req) {
+			let res
 			let tracers = Object.values(Client.tracers)
 			for(let tracer of tracers) {
 				if (tracer.request) {
-					tracer.request.call(tracer, request)
+					tracer.request.call(tracer, req)
 				}
 			}
 			let middleware = middlewares.pop()
 			if (!middleware) {
-				if (request[symbols.isProxy]) {
+				if (req[symbols.isProxy]) {
 					// even though a Proxy is supposed to be 'invisible'
 					// fetch() doesn't work with the proxy (in Firefox), 
 					// you need the actual Request object here
-					request = request[symbols.source]
+					req = req[symbols.source]
 				}
-				response = response(await fetch(request))
+				res = response(await fetch(req))
 			} else {
-				response = await middleware(request, next)
+				res = await middleware(req, next)
 			}
 			for(let tracer of tracers) {
 				if (tracer.response) {
-					tracer.response.call(tracer, response)
+					tracer.response.call(tracer, res)
 				}
 			}
-			return response
+			return res
 		}
-		return next(request)
+		return next(request(this.#options,req))
 	}
 
 	with(...options) {
