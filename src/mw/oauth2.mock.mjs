@@ -32,7 +32,7 @@ export default function oauth2mock(req, next) {
 			if (error = assert.fails(url.searchParams, {
 				response_type: 'code',
 				client_id: 'clientId',
-				state: /.*/
+				state: assert.optional(/.*/)
 			})) {
 				return metro.response(badRequest(error))
 			}
@@ -69,7 +69,7 @@ export default function oauth2mock(req, next) {
 		break
 		case '/protected/':
 			let auth = req.headers.get('Authorization')
-			let [type,token] = auth.split(' ')
+			let [type,token] = auth ? auth.split(' ') : []
 			if (!token || token!=='mockAccessToken') {
 				return metro.response({
 					status: 401,
@@ -94,7 +94,7 @@ export default function oauth2mock(req, next) {
 			return metro.response({
 				status: 404,
 				statusText: 'not found',
-				body: '404 Not Found'
+				body: '404 Not Found '+url
 			})
 		break
 	}
