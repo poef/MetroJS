@@ -16,7 +16,7 @@ export function disable() {
  * an array with a list of all fields that do not match, and why
  * @param  {any} data    The data to match
  * @param  {any} pattern The pattern to match
- * @return {Boolean(true)|false} True if the pattern fails, false
+ * @return {Array|false} Array with problems if the pattern fails, false
  */
 export function fails(data, pattern) {
 	let problems = []
@@ -63,9 +63,7 @@ export function fails(data, pattern) {
     	}
     }
     if (problems.length) {
-    	let result = new Boolean(true)
-    	result.problems = problems
-    	return result
+    	return problems
     }
     return false
 }
@@ -76,7 +74,7 @@ export function check(source, test) {
 	}
 	let result = fails(source,test)
 	if (result) {
-		throw new assertError(result.problems)
+		throw new assertError(result)
 	}
 }
 
@@ -96,9 +94,7 @@ export function oneOf(...patterns) {
 				return false
 			}
 		}
-		let result = new Boolean(true)
-    	result.problems = ['data does not match oneOf patterns']
-    	return result
+		return ['data does not match oneOf patterns']
 	}
 }
 

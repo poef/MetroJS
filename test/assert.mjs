@@ -71,7 +71,7 @@ tap.test('optional2', t => {
 	}
 	let result = assert.fails(source, expect)
 	t.ok(result)
-	t.equal(result.problems.length, 1)
+	t.equal(result.length, 1)
 	t.end()
 })
 
@@ -96,6 +96,6 @@ tap.test('oneOf2', t => {
 	}
 	let result = assert.fails(source, expect)
 	t.ok(result)
-	t.equal(result.problems.length, 1)
+	t.equal(result.length, 1)
 	t.end()	
 })
