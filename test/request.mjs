@@ -1,12 +1,12 @@
 import tap from 'tap'
 import * as metro from '../src/metro.mjs'
-/*
+
 tap.test('start', t => {
 	let req = metro.request('https://example.com')
 	t.equal(req.url, 'https://example.com/')
 	t.end()
 })
-*/
+
 tap.test('copy', t => {
 	let req = new Request('https://example.com')
 	let req2 = metro.request(req, {url:'?foo=bar'})
@@ -15,7 +15,33 @@ tap.test('copy', t => {
 	t.end()
 })
 
-/*
+tap.test('url', t => {
+	let req = metro.request('/protected/')
+	t.equal(req.url, 'https://localhost/protected/')
+	t.end()
+})
+
+tap.test('url2', t => {
+	let req = metro.request('https://example.com','/protected/')
+	t.equal(req.url, 'https://example.com/protected/')
+	t.end()
+})
+
+tap.test('url3', t => {
+	let req = metro.request('https://example.com',{method:'POST'},'/protected/')
+	t.equal(req.url, 'https://example.com/protected/')
+	t.equal(req.method, 'POST')
+	t.end()
+})
+
+tap.test('url4', t => {
+	let url = metro.url('/protected/')
+	let req = metro.request('https://example.com',{method:'POST'},url)
+	t.equal(req.url, 'https://localhost/protected/')
+	t.equal(req.method, 'POST')
+	t.end()
+})
+
 tap.test('headers', t => {
 	let req = metro.request('https://example.com', {
 		headers: {
@@ -108,5 +134,3 @@ tap.test('text', async t => {
 	t.equal(s, 'This is the body')
 	t.end()
 })
-
-*/
