@@ -7,9 +7,11 @@ export default function oauth2mw(options) {
 	const oauth2 = {
 		tokens: new Map(),
 		endpoints: {},
+		callbacks: {},
 		client: metro.client().with(jsonmw()),
 		client_id: '',
 		client_secret: '',
+		grant_type: 'authorization_code',
 		force_authorization: false
 	}
 
@@ -23,6 +25,7 @@ export default function oauth2mw(options) {
 			case 'client':
 			case 'client_id':
 			case 'client_secret':
+			case 'grant_type':
 			case 'force_authorization':
 				oauth2[option] = options[option]
 			break
@@ -37,10 +40,43 @@ export default function oauth2mw(options) {
 					}
 				}
 			break
+			case 'endpoints':
+				for (let endpoint in options.endpoints) {
+					if (endpoint!='authorize' && endpoint!='token') {
+						throw new metro.metroError('Unknown endpoint, choose one of "authorize" or "token"',endpoint)
+					}
+				}
+				Object.assign(oauth2.endpoints, options.endpoints)
+			break
+			case 'callbacks':
+				for (let callback in options.callbacks) {
+					if (callback != 'authorize') {
+						throw new metro.metroError('Unknown callback, choose one of "authorize"',callback)
+					}
+				}
+				Object.assign(oauth2.callbacks, options.callbacks)
+			break
 			default:
-				throw new metro.metroError('Unknown oauth2mw option',option)
+				throw new metro.metroError('Unknown oauth2mw option ',option)
 			break
 		}
+	}
+
+	return async function(req, next) {
+		if (oauth2.force_authorization) {
+			return oauth2authorized(req, next)
+		}
+		let res = await next(req)
+		if (res.ok) {
+			return res
+		}
+		switch(res.status) {
+			case 400:
+			case 401:
+				return oauth2authorized(req, next)
+			break
+		}
+		return res
 	}
 
 	async function oauth2authorized(req, next) {
@@ -62,15 +98,15 @@ export default function oauth2mw(options) {
 	}
 
 	async function fetchToken(req) {
-		if (oauth2.grant_type === 'authorization_code' && !ouath2.tokens.has('authorization_code')) {
-			let authReqURL = getAuthTokenURL(oauth2.endpoints.authorize)
+		if (oauth2.grant_type === 'authorization_code' && !oauth2.tokens.has('authorization_code')) {
+			let authReqURL = getAuthTokenURL()
 			if (!oauth2.callbacks.authorize || typeof oauth2.callbacks.authorize !== 'function') {
 				throw metro.metroError('oauth2mw: oauth2 with grant_type:authorization_code requires a callback function in client options.oauth2.callbacks.authorize')
 			}
-			let token = await oauth2.options.callbacks.authorize(authReqURL)
+			let token = await oauth2.callbacks.authorize(authReqURL)
 			oauth2.tokens.set('authorization_code', token)
 		}
-		let tokenReq = getAccessTokenRequest(oauth2.endpoints.token)
+		let tokenReq = getAccessTokenRequest()
 		let response = await oauth2.client.post(tokenReq)
 		if (!response.ok) {
 			throw metro.metroError(response.status+':'+response.statusText, await response.text())
@@ -90,7 +126,7 @@ export default function oauth2mw(options) {
 
 	async function refreshToken(req, next)
 	{
-		let refreshTokenReq = getAccessTokenRequest(oauth2.endpoints.token, 'refresh_token')
+		let refreshTokenReq = getAccessTokenRequest('refresh_token')
 		let response = await oauth2.client.post(refreshTokenReq)
 		if (!response.ok) {
 			throw metro.metroError(res.status+':'+res.statusText, await res.text())
@@ -109,8 +145,11 @@ export default function oauth2mw(options) {
 	}
 
 
-	function getAuthTokenURL(url) {
-		url = metro.url(url, {hash: ''})
+	function getAuthTokenURL() {
+		if (!oauth2.endpoints.authorize) {
+			throw metro.metroError('oauth2mw: Missing options.endpoints.authorize url')
+		}
+		let url = metro.url(oauth2.endpoints.authorize, {hash: ''})
 		assert.check(oauth2, {
 			client_id: /.+/,
 			authRedirectURL: /.+/,
@@ -119,28 +158,31 @@ export default function oauth2mw(options) {
 		return metro.url(url, {
 			search: {
 				response_type: 'code',
-				client_id:     req.oauth2.client_id,
-				redirect_uri:  req.oauth2.authRedirectURL,
-				scope:         req.oauth2.scope,
-				state:         createState(req)
+				client_id:     oauth2.client_id,
+				redirect_uri:  oauth2.authRedirectURL,
+				scope:         oauth2.scope,
+				state:         createState(40)
 			}
 		})
 	}
 
-	function createState(req) {
+	function createState(length) {
 		const validChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
 		let randomState = ''
 		let counter = 0
 	    while (counter < length) {
-	        randomState += characters.charAt(Math.floor(Math.random() * charactersLength))
+	        randomState += validChars.charAt(Math.floor(Math.random() * validChars.length))
 	        counter++
 	    }
-		req.oauth2.state = randomState;
+		oauth2.state = randomState;
 		return randomState;
 	}
 
-	function getAccessTokenRequest(url, grant_type=null) {
-		url = metro.url(url, {hash: ''})
+	function getAccessTokenRequest(grant_type=null) {
+		if (!oauth2.endpoints.token) {
+			throw metro.metroError('oauth2mw: Missing options.endpoints.token url')
+		}
+		let url = metro.url(oauth2.endpoints.token, {hash: ''})
 		let params = {
 			grant_type:    grant_type || oauth2.grant_type,
 			client_id:     oauth2.client_id,
@@ -151,7 +193,7 @@ export default function oauth2mw(options) {
 		}
 		switch(oauth2.grant_type) {
 			case 'authorization_code':
-				if (qauth2.redirect_uri) {
+				if (oauth2.redirect_uri) {
 					params.redirect_uri = oauth2.redirect_uri
 				}
 				params.code = oauth2.tokens.get('authorization')
@@ -165,10 +207,11 @@ export default function oauth2mw(options) {
 			break
 		}
 		return metro.request(url, {
+			method: 'POST',
 			headers: {
 				'Content-Type': 'application/x-www-form-urlencoded'
 			},
-			body: new FormData(params)
+			body: metro.formdata(params)
 		})
 	}
 
@@ -192,21 +235,5 @@ export default function oauth2mw(options) {
 		throw new TypeError('Unknown expires type '+duration);
 	}
 
-	return async function(req, next) {
-		if (oauth2.force_authorization) {
-			return oauth2authorized(req, next)
-		}
-		let res = await next(req)
-		if (res.ok) {
-			return res
-		}
-		switch(res.status) {
-			case '400':
-			case '401':
-				return oauth2authorized(req, next)
-			break
-		}
-		return res
-	}
 
 }
