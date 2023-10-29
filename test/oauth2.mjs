@@ -5,7 +5,6 @@ import tap from 'tap'
 
 let client = metro.client().with(oauth2mock)
 
-/*
 tap.test('start', async t => {
 	let res = await client.get('/public/')
 	t.ok(res.ok)
@@ -27,7 +26,7 @@ tap.test('oauth2start', async t => {
 	t.equal(json.result,'Success')
 	t.end()
 })
-*/
+
 tap.test('authorize', async t => {
 	const oauth2client = client.with(oauth2mw({
 		client: client,
