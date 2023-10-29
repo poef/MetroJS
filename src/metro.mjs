@@ -39,8 +39,11 @@ class Client {
 		}
 		for (const verb of this.#options.verbs) {
 			this[verb] = async function(...options) {
-				options.unshift({method: verb.toUpperCase()})
-				return this.#fetch(request({url:this.#options.baseURL},...options))
+				return this.#fetch(request(
+					this.#options.baseURL,
+					...options,
+					{method: verb.toUpperCase()}
+				))
 			}
 		}
 		Object.freeze(this)
@@ -212,6 +215,8 @@ export function request(...options) {
 			requestParams.url = new URL(option, requestParams.url)
 		} else if (option instanceof Request) {
 			Object.assign(requestParams, getRequestParams(option, requestParams))
+		} else if (option instanceof URL) {
+			requestParams.url = new URL(option, requestParams.url)
 		} else if (option && typeof option == 'object') {
 			Object.assign(requestParams, getRequestParams(option, requestParams))
 		}
@@ -463,18 +468,60 @@ export function url(...options) {
 	})
 }
 
+export function formdata(...options) {
+	var params = new FormData()
+	for (let option of options) {
+		if (option instanceof FormData) {
+			for (let entry of option.entries()) {
+				params.append(entry[0],entry[1])
+			}
+		} else if (option && typeof option == 'object') {
+			for (let entry of Object.entries(option)) {
+				if (Array.isArray(entry[1])) {
+					for (let value of entry[1]) {
+						params.append(entry[0], value)
+					}
+				} else {
+					params.append(entry[0],entry[1])
+				}
+			}
+		} else {
+			throw new metroError('metro.formdata: unknown option type, only FormData or Object supported',option)
+		}
+	}
+	Object.freeze(params)
+	return new Proxy(params, {
+		get: (target,prop,receiver) => {
+			switch(prop) {
+				case symbols.isProxy:
+					return true
+				break
+				case symbols.source:
+					return target
+				break
+				case 'with':
+					return function(...options) {
+						return formdata(target, ...options)
+					}
+				break
+				case 'toString':
+				case 'toJSON':
+					return function() {
+						return target[prop]()
+					}
+				break
+			}
+			return target[prop]
+		}
+	})
+}
+
 const metroConsole = {
 	error: (message, ...details) => {
-		console.error('Ⓜ️  '+message)
-		if (details) {
-			console.log(...details)
-		}		
+		console.error('Ⓜ️  '+message, ...details)
 	},
 	info: (message, ...details) => {
-		console.info('Ⓜ️  '+message)
-		if (details) {
-			console.log(...details)
-		}		
+		console.info('Ⓜ️  '+message, ...details)
 	},
 	group: (name) => {
 		console.group('Ⓜ️  '+name)
