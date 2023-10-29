@@ -16,7 +16,7 @@ const client = metro.client({
   })
   if (typeof req.body == 'object') {
     req = req.with({
-      body = JSON.stringify(req.body)
+      body: JSON.stringify(req.body)
     })
   }
   let res = await next(req)
