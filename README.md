@@ -6,7 +6,7 @@
 import * as metro from '@muze-nl/metro'
 
 const client = metro.client({
-  baseURL: 'https://github.com/'
+  url: 'https://github.com/'
 }).with((req,next) => {
   req = req.with({
     headers: {
@@ -22,6 +22,7 @@ const client = metro.client({
   let res = await next(req)
   let body = await res.json()
   return res.with({ body })
+})
 ```
 
 MetroJS is an HTTPS client with support for middleware. Similar to [ExpressJS](https://expressjs.com/), but for the client.
