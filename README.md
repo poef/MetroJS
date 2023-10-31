@@ -54,7 +54,7 @@ npm install @muze-nl/metro
 
 In the browser, using a cdn:
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@muze-nl/metro@0.1.0/dist/browser.mjs"></script>
+<script src="https://cdn.jsdelivr.net/npm/@muze-nl/metro@0.1.0/dist/browser.js"></script>
 <script>
   async function main() {
     const client = metro.client('https://example.com/')
