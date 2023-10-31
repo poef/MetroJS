@@ -3,7 +3,15 @@
   "version": "0.0.1",
   "description": "http client with middleware support",
   "type": "module",
+  "source": "src/browser.mjs",
   "main": "src/metro.mjs",
+  "targets": {
+    "default": {
+      "distDir": "./dist",
+      "optimize": true
+    },
+    "main": false
+  },
   "directories": {
     "test": "test"
   },
