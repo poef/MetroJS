@@ -1,6 +1,6 @@
 # MetroJS: HTTPS Client with middleware
 
-[![Project stage: Concept][project-stage-badge: Concept]][project-stage-page]
+[![Project stage: Experimental][project-stage-badge: Experimental]][project-stage-page]
 
 ```javascript
 import * as metro from '@muze-nl/metro'
@@ -192,5 +192,5 @@ If any assertion fails, it will throw an Error with a list of assertions that fa
 
 
 
-[project-stage-badge: Concept]: https://img.shields.io/badge/Project%20Stage-Concept-red.svg
+[project-stage-badge: Experimental]: https://img.shields.io/badge/Project%20Stage-Experimental-yellow.svg
 [project-stage-page]: https://blog.pother.ca/project-stages/
