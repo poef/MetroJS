@@ -74,7 +74,7 @@ export function check(source, test) {
 	}
 	let result = fails(source,test)
 	if (result) {
-		throw new assertError(result)
+		throw new assertError(result,source)
 	}
 }
 
@@ -99,8 +99,11 @@ export function oneOf(...patterns) {
 }
 
 class assertError {
-	constructor(problems) {
+	constructor(problems, ...details) {
 		this.problems = problems
+		this.details = details
+		console.trace()
 	}
+
 }
 
