@@ -1,12 +1,12 @@
 # MetroJS: HTTPS Client with middleware
 
-[![Project stage: Concept][project-stage-badge: Concept]][project-stage-page]
+[![Project stage: Experimental][project-stage-badge: Experimental]][project-stage-page]
 
 ```javascript
 import * as metro from '@muze-nl/metro'
 
 const client = metro.client({
-  baseURL: 'https://github.com/'
+  url: 'https://github.com/'
 }).with((req,next) => {
   req = req.with({
     headers: {
@@ -22,6 +22,7 @@ const client = metro.client({
   let res = await next(req)
   let body = await res.json()
   return res.with({ body })
+})
 ```
 
 MetroJS is an HTTPS client with support for middleware. Similar to [ExpressJS](https://expressjs.com/), but for the client.
@@ -54,7 +55,7 @@ npm install @muze-nl/metro
 
 In the browser, using a cdn:
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@muze-nl/metro@0.1.0/dist/browser.mjs"></script>
+<script src="https://cdn.jsdelivr.net/npm/@muze-nl/metro@0.1.0/dist/browser.js"></script>
 <script>
   async function main() {
     const client = metro.client('https://example.com/')
@@ -191,5 +192,5 @@ If any assertion fails, it will throw an Error with a list of assertions that fa
 
 
 
-[project-stage-badge: Concept]: https://img.shields.io/badge/Project%20Stage-Concept-red.svg
+[project-stage-badge: Experimental]: https://img.shields.io/badge/Project%20Stage-Experimental-yellow.svg
 [project-stage-page]: https://blog.pother.ca/project-stages/
