@@ -518,10 +518,10 @@ export function formdata(...options) {
 
 const metroConsole = {
 	error: (message, ...details) => {
-		console.error('Ⓜ️  '+message, ...details)
+		console.error('Ⓜ️  ',message, ...details)
 	},
 	info: (message, ...details) => {
-		console.info('Ⓜ️  '+message, ...details)
+		console.info('Ⓜ️  ',message, ...details)
 	},
 	group: (name) => {
 		console.group('Ⓜ️  '+name)
@@ -553,10 +553,10 @@ export const trace = {
 			request: (req) => {
 				group++
 				metroConsole.group(group)
-				metroConsole.info(req.url)				
+				metroConsole.info(req.url, req)
 			},
 			response: (res) => {
-				metroConsole.info(res.body)
+				metroConsole.info(res.body[symbols.source], res)
 				metroConsole.groupEnd(group)
 				group--
 			}
