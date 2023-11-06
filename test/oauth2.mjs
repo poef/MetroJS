@@ -29,9 +29,9 @@ tap.test('oauth2start', async t => {
 
 tap.test('authorize', async t => {
 	const oauth2client = client.with(oauth2mw({
-		client: client,
-		client_id: 'clientId',
-		client_secret: 'clientSecret',
+		client: client, // with mock oauth2 middleware
+		client_id: 'mockClientId',
+		client_secret: 'mockClientSecret',
 		grant_type: 'authorization_code',
 		endpoints: {
 			authorize: '/authorize/',
@@ -42,7 +42,10 @@ tap.test('authorize', async t => {
 		}
 	}))
 	let url = metro.url('/protected/')
-	metro.trace.add('group', metro.trace.group())
+//	metro.trace.add('group', metro.trace.group())
+	metro.trace.add('group', {
+		request: req => console.log(req.url)
+	})
 	let res = await oauth2client.get(url)
 		t.ok(res.ok)
 	let json = await res.json()
