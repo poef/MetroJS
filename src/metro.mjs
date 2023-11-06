@@ -68,34 +68,38 @@ class Client {
 		if (!req.url) {
 			throw metroError('metro.client.'+r.method.toLowerCase()+': Missing url parameter '+metroURL+'client/missing-url-param/', req)
 		}
-		let middlewares = this.#options?.middlewares?.slice() || []
+		let metrofetch = async (req) => {
+			if (req[symbols.isProxy]) {
+				// even though a Proxy is supposed to be 'invisible'
+				// fetch() doesn't work with the proxy (in Firefox), 
+				// you need the actual Request object here
+				req = req[symbols.source]
+			}
+			return response(await fetch(req))
+		}
+		let middlewares = [metrofetch].concat(this.#options?.middlewares?.slice() || [])
 		let options = this.#options
-		let next = async function next(req) {
-			let res
-			let tracers = Object.values(Client.tracers)
-			for(let tracer of tracers) {
-				if (tracer.request) {
-					tracer.request.call(tracer, req)
-				}
-			}
-			let middleware = middlewares.pop()
-			if (!middleware) {
-				if (req[symbols.isProxy]) {
-					// even though a Proxy is supposed to be 'invisible'
-					// fetch() doesn't work with the proxy (in Firefox), 
-					// you need the actual Request object here
-					req = req[symbols.source]
-				}
-				res = response(await fetch(req))
-			} else {
-				res = await middleware(req, next)
-			}
-			for(let tracer of tracers) {
-				if (tracer.response) {
-					tracer.response.call(tracer, res)
-				}
-			}
-			return res
+		//@TODO: do this once in constructor?
+		let next
+		for (let middleware of middlewares) {
+			next = (function(next, middleware) {
+				return async function(req) {
+					let res
+					let tracers = Object.values(Client.tracers)
+					for(let tracer of tracers) {
+						if (tracer.request) {
+							tracer.request.call(tracer, req)
+						}
+					}
+					res = await middleware(req, next)
+					for(let tracer of tracers) {
+						if (tracer.response) {
+							tracer.response.call(tracer, res)
+						}
+					}
+					return res
+				}								
+			})(next, middleware)
 		}
 		return next(request(this.#options,req))
 	}
@@ -193,7 +197,7 @@ function getRequestParams(req, current) {
 			params[prop] = req[prop](params[prop], params)
 		} else if (typeof req[prop] != 'undefined') {
 			if (prop == 'url') {
-				params.url = new URL(req.url, params.url)
+				params.url = url(params.url, req.url)
 			} else {
 				params[prop] = req[prop]
 			}
@@ -211,12 +215,8 @@ export function request(...options) {
 		duplex: 'half' // required when setting body to ReadableStream, just set it here by default already
 	}
 	for (let option of options) {
-		if (typeof option == 'string') {
-			requestParams.url = new URL(option, requestParams.url)
-		} else if (option instanceof Request) {
-			Object.assign(requestParams, getRequestParams(option, requestParams))
-		} else if (option instanceof URL) {
-			requestParams.url = new URL(option, requestParams.url)
+		if (typeof option == 'string' || option instanceof URL) {
+			requestParams.url = url(requestParams.url, option)
 		} else if (option && typeof option == 'object') {
 			Object.assign(requestParams, getRequestParams(option, requestParams))
 		}
@@ -400,12 +400,14 @@ function appendSearchParams(url, params) {
 }
 
 export function url(...options) {
-	let u = 'https://localhost/'
+	let validParams = ['hash','host','hostname','href',
+			'password','pathname','port','protocol','username']
+	let u = new URL('https://localhost/')
 	for (let option of options) {
 		if (typeof option == 'string' || option instanceof String) {
 			// option is a relative or absolute url
 			u = new URL(option, u)
-		} else if (option instanceof URL) {
+		} else if (option instanceof URL || (typeof Location != 'undefined' && option instanceof Location)) {
 			u = new URL(option)
 		} else if (option && typeof option == 'object') {
 			for (let param in option) {
@@ -418,8 +420,7 @@ export function url(...options) {
 				} else if (param=='searchParams') {
 					appendSearchParams(u, option.searchParams)
 				} else {
-					if (!['hash','host','hostname','href','origin',
-						'password','pathname','port','protocol','username'].includes(param)) {
+					if (!validParams.includes(param)) {
 						throw metroError('metro.url: unknown url parameter '+metroURL+'url/unknown-param-name/', param)
 					}
 					if (typeof option[param] == 'function') {
@@ -553,10 +554,10 @@ export const trace = {
 			request: (req) => {
 				group++
 				metroConsole.group(group)
-				metroConsole.info(req.url, req)
+				metroConsole.info(req?.url, req)
 			},
 			response: (res) => {
-				metroConsole.info(res.body[symbols.source], res)
+				metroConsole.info(res?.body ? res.body[symbols.source]: null, res)
 				metroConsole.groupEnd(group)
 				group--
 			}
