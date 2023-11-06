@@ -26,7 +26,7 @@ const badRequest = (error) => {
 let error, expect, token
 
 export default function oauth2mock(req, next) {
-	let url = new URL(req.url)
+	let url = metro.url(req.url)
 	switch(url.pathname) {
 		case '/authorize/':
 			if (error = assert.fails(url.searchParams, {
@@ -49,14 +49,26 @@ export default function oauth2mock(req, next) {
 			})) {
 				return metro.response(badRequest(error))
 			}
-			if (error = assert.fails(url.searchParams, {
-				grant_type: 'refresh_token',
-				refresh_token: 'mockRefresh',
-				client_id: 'mockClientId',
-				client_secret: 'mockClientSecret'
-			})) {
-				return metro.response(badRequest(error))
+			switch(url.searchParams.grant_type) {
+				case 'refresh_token':
+					if (error = assert.fails(url.searchParams, {
+						refresh_token: 'mockRefresh',
+						client_id: 'mockClientId',
+						client_secret: 'mockClientSecret'
+					})) {
+						return metro.response(badRequest(error))
+					}
+				break
+				case 'access_token':
+					if (error = assert.fails(url.searchParams, {
+						client_id: 'mockClientId',
+						client_secret: 'mockClientSecret'
+					})) {
+						return metro.response(badRequest(error))
+					}
+				break
 			}
+
 			return metro.response(baseResponse, {
 				body: JSON.stringify({
 					access_token: 'mockAccessToken',

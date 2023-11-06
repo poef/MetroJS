@@ -107,7 +107,7 @@ export default function oauth2mw(options) {
 			oauth2.tokens.set('authorization_code', token)
 		}
 		let tokenReq = getAccessTokenRequest()
-		let response = await oauth2.client.post(tokenReq)
+		let response = await oauth2.client.get(tokenReq)
 		if (!response.ok) {
 			throw metro.metroError(response.status+':'+response.statusText, await response.text())
 		}
@@ -127,7 +127,7 @@ export default function oauth2mw(options) {
 	async function refreshToken(req, next)
 	{
 		let refreshTokenReq = getAccessTokenRequest('refresh_token')
-		let response = await oauth2.client.post(refreshTokenReq)
+		let response = await oauth2.client.get(refreshTokenReq)
 		if (!response.ok) {
 			throw metro.metroError(res.status+':'+res.statusText, await res.text())
 		}
@@ -207,11 +207,10 @@ export default function oauth2mw(options) {
 			break
 		}
 		return metro.request(url, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded'
-			},
-			body: metro.formdata(params)
+			method: 'GET',
+			url: {
+				searchParams: params
+			}
 		})
 	}
 
