@@ -68,7 +68,6 @@ export default function oauth2mock(req, next) {
 					}
 				break
 			}
-
 			return metro.response(baseResponse, {
 				body: JSON.stringify({
 					access_token: 'mockAccessToken',

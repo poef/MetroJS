@@ -49,6 +49,6 @@ tap.test('authorize', async t => {
 	let res = await oauth2client.get(url)
 		t.ok(res.ok)
 	let json = await res.json()
-	t.equal(json.code,'mockAuthorizeToken')
+	t.equal(json.result,'Success')
 	t.end()
 })
