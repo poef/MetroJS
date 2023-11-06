@@ -134,3 +134,16 @@ tap.test('text', async t => {
 	t.equal(s, 'This is the body')
 	t.end()
 })
+
+tap.test('urlSearchParams', t => {
+	let req = metro.request('https://example.com', {
+		url: {
+			searchParams: {
+				foo: 'bar',
+				bar: 'baz'
+			}
+		}
+	})
+	t.equal(req.url, 'https://example.com/?foo=bar&bar=baz')
+	t.end()
+})
