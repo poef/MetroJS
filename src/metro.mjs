@@ -14,7 +14,6 @@ class Client {
 	static tracers = {}
 
 	constructor(...options) {
-		this.#options.verbs = this.#verbs
 		for (let option of options) {
 			if (typeof option == 'string' || option instanceof String) {
 				this.#options.url = ''+option
@@ -34,13 +33,15 @@ class Client {
 				}
 			}
 		}
-		if (!this.#options.verbs) {
-			this.#options.verbs = this.#verbs
+		if (this.#options.verbs) {
+			this.#verbs = this.#options.verbs
+			delete this.#options.verbs
 		}
-		for (const verb of this.#options.verbs) {
+
+		for (const verb of this.#verbs) {
 			this[verb] = async function(...options) {
 				return this.#fetch(request(
-					this.#options.url,
+					this.#options,
 					...options,
 					{method: verb.toUpperCase()}
 				))
