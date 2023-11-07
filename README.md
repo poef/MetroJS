@@ -32,7 +32,7 @@ You add middleware with the `with()` function, as shown above.
 The signature for a middleware function is:
 
 ```javascript
-(request, next) => {
+async (request, next) => {
    // alter request
    let response = await next(request)
    // alter response
