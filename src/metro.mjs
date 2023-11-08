@@ -102,7 +102,7 @@ class Client {
 				}								
 			})(next, middleware)
 		}
-		return next(request(this.#options,req))
+		return next(req)
 	}
 
 	with(...options) {
@@ -137,7 +137,51 @@ function appendHeaders(r, headers) {
 }
 
 function bodyProxy(body, r) {
-	return new Proxy(r.body, {
+	let source = r.body
+	if (!source) {
+		//Firefox does not allow access to Request.body (undefined)
+		//Chrome and Nodejs do, so mimic the correct (documented)
+		//result here
+		if (body == null) {
+			source = new ReadableStream()
+		} else if (body instanceof ReadableStream) {
+			source = body
+		} else if (body instanceof Blob) {
+			source = body.stream()
+		} else {
+			source = new ReadableStream({
+				start(controller) {
+					let chunk
+					switch(typeof body) {
+						case 'object':
+							if (typeof body.toString == 'function') {
+								chunk = body.toString()
+							} else if (body instanceof FormData) {
+								chunk = new URLSearchParams(body).toString()
+							} else if (body instanceof ArrayBuffer
+								|| ArrayBuffer.isView(body)
+							) {
+								chunk = body
+							} else {
+								throw metroError('Cannot convert body to ReadableStream', body)
+							}
+						break
+						case 'string':
+						case 'number':
+						case 'boolean':
+							chunk = body
+						break
+						default:
+							throw metroError('Cannot convert body to ReadableStream', body)
+						break
+					}
+					controller.enqueue(chunk)
+					controller.close()
+				}
+			})
+		}
+	}
+	return new Proxy(source, {
 		get(target, prop, receiver) {
 			switch (prop) {
 				case symbols.isProxy:
