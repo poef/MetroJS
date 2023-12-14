@@ -4,13 +4,31 @@ import jsonmw from './json.mjs'
 
 export default function oauth2mw(options) {
 
+	let localState
+	if (typeof localStorage !== 'undefined') {
+		localState = {
+			get: () => localStorage.getItem('metro/state'),
+			has: () => localStorage.getItem('metro/state'),
+			set: (value) => localStorage.setItem('metro/state', value)
+		}
+	} else {
+		let stateMap = new Map()
+		localState = {
+			get: () => stateMap.getItem('metro/state'),
+			has: () => stateMap.getItem('metro/state'),
+			set: (value) => stateMap.setItem('metro/state', value)
+		}
+	}
+
 	const oauth2 = {
 		tokens: new Map(),
+		state: (typeof localStorage !== 'undefined' ? localStorage : new Map()),
 		endpoints: {},
 		callbacks: {},
 		client: metro.client().with(jsonmw()),
 		client_id: '',
 		client_secret: '',
+		redirect_uri: '',
 		grant_type: 'authorization_code',
 		force_authorization: false
 	}
@@ -22,28 +40,33 @@ export default function oauth2mw(options) {
 			case 'refresh_token':
 				oauth2.tokens.set(option, options[option])
 			break
+
 			case 'client':
 			case 'client_id':
 			case 'client_secret':
 			case 'grant_type':
 			case 'force_authorization':
+			case 'redirect_uri':
 				oauth2[option] = options[option]
 			break
+			case 'state':
 			case 'tokens':
-				if (typeof options.tokens.set == 'function' && 
-					typeof options.tokens.get == 'function' && 
-					typeof options.tokens.has == 'function' ) {
-					oauth2.tokens = option.tokens
-				} else if (options.tokens && typeof options.tokens == 'object') {
+				if (typeof options[option].set == 'function' && 
+					typeof options[option].get == 'function' && 
+					typeof options[option].has == 'function' ) {
+					oauth2[option] = options[option]
+				} else if (option == 'tokens' && typeof options.tokens == 'object') {
 					for (let token in options.tokens) {
 						oauth2.tokens.set(token, options.tokens[token])
 					}
+				} else {
+					throw metro.metroError('metro/mw/oauth2: incorrect value for '+option)
 				}
 			break
 			case 'endpoints':
 				for (let endpoint in options.endpoints) {
 					if (endpoint!='authorize' && endpoint!='token') {
-						throw new metro.metroError('Unknown endpoint, choose one of "authorize" or "token"',endpoint)
+						throw metro.metroError('Unknown endpoint, choose one of "authorize" or "token"',endpoint)
 					}
 				}
 				Object.assign(oauth2.endpoints, options.endpoints)
@@ -51,14 +74,20 @@ export default function oauth2mw(options) {
 			case 'callbacks':
 				for (let callback in options.callbacks) {
 					if (callback != 'authorize') {
-						throw new metro.metroError('Unknown callback, choose one of "authorize"',callback)
+						throw metro.metroError('Unknown callback, choose one of "authorize"',callback)
 					}
 				}
 				Object.assign(oauth2.callbacks, options.callbacks)
 			break
 			default:
-				throw new metro.metroError('Unknown oauth2mw option ',option)
+				throw metro.metroError('Unknown oauth2mw option ',option)
 			break
+		}
+		if (!oauth2.redirect_uri) {
+			oauth2.redirect_uri = typeof window !== 'undefined' ? window.location?.href : ''
+		}
+		if (oauth2.redirect_uri) {
+			oauth2.redirect_uri = metro.url(oauth2.redirect_uri).with('?metroRedirect=true')
 		}
 	}
 
@@ -80,6 +109,7 @@ export default function oauth2mw(options) {
 	}
 
 	async function oauth2authorized(req, next) {
+		getTokensFromLocation()
 		if (!oauth2.tokens.has('access_token')) {
 			await fetchToken(req)
 			return oauth2authorized(req, next)
@@ -97,6 +127,35 @@ export default function oauth2mw(options) {
 		}
 	}
 
+	function getTokensFromLocation() {
+		// check if window.location is available and contains tokens
+		if (typeof window !== 'undefined' && window?.location) {
+			let url = metro.url(window.location)
+			let code, state, params
+			if (url.searchParams.has('code')) {
+				params = url.searchParams
+				url = url.with({ search:'' })
+				history.pushState({},'',url.href)
+			} else if (url.hash) {
+				let query = url.hash.substr(1)
+				params = new URLSearchParams('?'+query)
+				url = url.with({ hash:'' })
+				history.pushState({},'',url.href)
+			}
+			if (params) {
+				code = params.get('code')
+				state = params.get('state')
+				let storedState = oauth2.state.get('metro/state')
+				if (!state || state!==storedState) {
+					return
+				}
+				if (code) {
+					oauth2.tokens.set('authorization_code', code)
+				}
+			}
+		}
+	}
+
 	async function fetchToken(req) {
 		if (oauth2.grant_type === 'authorization_code' && !oauth2.tokens.has('authorization_code')) {
 			let authReqURL = getAuthTokenURL()
@@ -104,7 +163,9 @@ export default function oauth2mw(options) {
 				throw metro.metroError('oauth2mw: oauth2 with grant_type:authorization_code requires a callback function in client options.oauth2.callbacks.authorize')
 			}
 			let token = await oauth2.callbacks.authorize(authReqURL)
-			oauth2.tokens.set('authorization_code', token)
+			if (token) {
+				oauth2.tokens.set('authorization_code', token)
+			}
 		}
 		let tokenReq = getAccessTokenRequest()
 		let response = await oauth2.client.get(tokenReq)
@@ -119,7 +180,7 @@ export default function oauth2mw(options) {
 			scope: data.scope
 		})
 		if (data.refresh_token) {
-			oauth2.tokens.set('refresh', data.refresh_token)
+			oauth2.tokens.set('refresh_token', data.refresh_token)
 		}
 		return data
 	}
@@ -152,14 +213,14 @@ export default function oauth2mw(options) {
 		let url = metro.url(oauth2.endpoints.authorize, {hash: ''})
 		assert.check(oauth2, {
 			client_id: /.+/,
-			authRedirectURL: /.+/,
+			redirect_uri: /.+/,
 			scope: /.*/
 		})
 		return metro.url(url, {
 			search: {
 				response_type: 'code',
 				client_id:     oauth2.client_id,
-				redirect_uri:  oauth2.authRedirectURL,
+				redirect_uri:  oauth2.redirect_uri,
 				scope:         oauth2.scope,
 				state:         createState(40)
 			}
@@ -174,11 +235,16 @@ export default function oauth2mw(options) {
 	        randomState += validChars.charAt(Math.floor(Math.random() * validChars.length))
 	        counter++
 	    }
-		oauth2.state = randomState;
-		return randomState;
+		oauth2.state.set(randomState)
+		return randomState
 	}
 
 	function getAccessTokenRequest(grant_type=null) {
+		assert.check(oauth2, {
+			client_id: /.+/,
+			client_secret: /.+/,
+			redirect_uri: /.+/
+		})
 		if (!oauth2.endpoints.token) {
 			throw metro.metroError('oauth2mw: Missing options.endpoints.token url')
 		}
@@ -193,10 +259,8 @@ export default function oauth2mw(options) {
 		}
 		switch(oauth2.grant_type) {
 			case 'authorization_code':
-				if (oauth2.redirect_uri) {
-					params.redirect_uri = oauth2.redirect_uri
-				}
-				params.code = oauth2.tokens.get('authorization')
+				params.redirect_uri = oauth2.redirect_uri
+				params.code = oauth2.tokens.get('authorization_code')
 				params.response_type = 'token' // spec #3.1.1
 			break
 			case 'client_credentials':
@@ -215,9 +279,10 @@ export default function oauth2mw(options) {
 	}
 
 	function isExpired(req) {
-		if (req.oauth2 && req.oauth2.tokens && req.oauth2.tokens.access) {
+		if (req.oauth2 && req.oauth2.tokens && req.oauth2.tokens.has('access_token')) {
 			let now = new Date();
-			return now.getTime() > req.oauth2.tokens.access.expires.getTime();
+			let token = req.oauth2.tokens.get('access_token')
+			return now.getTime() > token.expires.getTime();
 		}
 		return false;
 	}
