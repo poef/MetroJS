@@ -142,7 +142,7 @@ function bodyProxy(body, r) {
 		//Firefox does not allow access to Request.body (undefined)
 		//Chrome and Nodejs do, so mimic the correct (documented)
 		//result here
-		if (body == null) {
+		if (body === null) {
 			source = new ReadableStream()
 		} else if (body instanceof ReadableStream) {
 			source = body
@@ -155,12 +155,14 @@ function bodyProxy(body, r) {
 					switch(typeof body) {
 						case 'object':
 							if (typeof body.toString == 'function') {
+								// also catches URLSearchParams
 								chunk = body.toString()
 							} else if (body instanceof FormData) {
 								chunk = new URLSearchParams(body).toString()
 							} else if (body instanceof ArrayBuffer
 								|| ArrayBuffer.isView(body)
 							) {
+								// catchs TypedArrays - e.g. Uint16Array
 								chunk = body
 							} else {
 								throw metroError('Cannot convert body to ReadableStream', body)
@@ -239,7 +241,7 @@ function getRequestParams(req, current) {
 		'referrer','referrerPolicy','integrity','keepalive','signal',
 		'priority','url']) {
 		if (typeof req[prop] == 'function') {
-			params[prop] = req[prop](params[prop], params)
+			req[prop](params[prop], params)
 		} else if (typeof req[prop] != 'undefined') {
 			if (prop == 'url') {
 				params.url = url(params.url, req.url)
@@ -260,7 +262,10 @@ export function request(...options) {
 		duplex: 'half' // required when setting body to ReadableStream, just set it here by default already
 	}
 	for (let option of options) {
-		if (typeof option == 'string' || option instanceof URL) {
+		if (typeof option == 'string'
+			|| option instanceof URL
+			|| option instanceof URLSearchParams
+		) {
 			requestParams.url = url(requestParams.url, option)
 		} else if (option && typeof option == 'object') {
 			Object.assign(requestParams, getRequestParams(option, requestParams))
@@ -342,7 +347,7 @@ function getResponseParams(res, current) {
 	}
 	for(let prop of ['status','statusText','headers','body','url','type','redirected']) {
 		if (typeof res[prop] == 'function') {
-			params[prop] = res[prop](params[prop], params)
+			res[prop](params[prop], params)
 		} else if (typeof res[prop] != 'undefined') {
 			if (prop == 'url') {
 				params.url = new URL(res.url, params.url || 'https://localhost/')
@@ -432,10 +437,7 @@ export function response(...options) {
 
 function appendSearchParams(url, params) {
 	if (typeof params == 'function') {
-		 let result = params(url.searchParams, url)
-		 if (result) {
-		 	url.searchParams = result
-		 }
+		 params(url.searchParams, url)
 	} else {
 		params = new URLSearchParams(params)
 		params.forEach((value,key) => {
@@ -446,19 +448,24 @@ function appendSearchParams(url, params) {
 
 export function url(...options) {
 	let validParams = ['hash','host','hostname','href',
-			'password','pathname','port','protocol','username']
+			'password','pathname','port','protocol','username','search','searchParams']
 	let u = new URL('https://localhost/')
 	for (let option of options) {
 		if (typeof option == 'string' || option instanceof String) {
 			// option is a relative or absolute url
 			u = new URL(option, u)
-		} else if (option instanceof URL || (typeof Location != 'undefined' && option instanceof Location)) {
+		} else if (option instanceof URL 
+			|| (typeof Location != 'undefined' 
+				&& option instanceof Location)
+		) {
 			u = new URL(option)
+		} else if (option instanceof URLSearchParams) {
+			appendSearchParams(u, option)
 		} else if (option && typeof option == 'object') {
 			for (let param in option) {
 				if (param=='search') {
 					if (typeof option.search == 'function') {
-						u.search = option.search(u.search, u)
+						option.search(u.search, u)
 					} else {
 						u.search = new URLSearchParams(option.search)
 					}
@@ -469,7 +476,7 @@ export function url(...options) {
 						throw metroError('metro.url: unknown url parameter '+metroURL+'url/unknown-param-name/', param)
 					}
 					if (typeof option[param] == 'function') {
-						u[param] = option[param](u[param], u)
+						option[param](u[param], u)
 					} else if (
 						typeof option[param] == 'string' || option[param] instanceof String 
 						|| typeof option[param] == 'number' || option[param] instanceof Number
