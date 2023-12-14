@@ -57,7 +57,7 @@ tap.test('bodyReadableStream', async t => {
 tap.test('bodyFunction', t => {
 	let res = metro.response('This is the body', {
 		body: (b, r) => {
-			return b+' altered'
+			r.body = b+' altered'
 		}
 	})
 	t.equal(''+res.body, 'This is the body altered')

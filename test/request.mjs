@@ -90,6 +90,17 @@ tap.test('bodyObject', t => {
 	t.end()
 })
 
+tap.test('bodyString', t => {
+	let body = "bar"
+	let req = metro.request('https://example.com', {
+		method: 'POST',
+		body: body
+	})
+	t.ok(req.body instanceof ReadableStream)
+	t.equal(req.body+'', 'bar')
+	t.end()
+})
+
 tap.test('bodyReadableStream', async t => {
 	let req = metro.request('https://example.com', {
 		method: 'POST',
@@ -107,7 +118,7 @@ tap.test('bodyFunction', t => {
 		body: 'This is the body'
 	}, {
 		body: (b, r) => {
-			return b+' altered'
+			r.body = b+' altered'
 		}
 	})
 	t.equal(''+req.body, 'This is the body altered')

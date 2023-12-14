@@ -50,9 +50,7 @@ tap.test('search4', t => {
 tap.test('searchFunction', t => {
 	let url = metro.url('https://example.com?foo=bar', { 
 		search: (search, url) => {
-			let sp = new URLSearchParams(search)
-			sp.delete('foo')
-			return sp
+			url.searchParams.delete('foo')
 		}
 	})
 	t.equal(url.href, 'https://example.com/')
@@ -105,9 +103,8 @@ tap.test('port', t => {
 tap.test('username', t => {
 	let url = metro.url('https://example.com/?user=foo', {
 		username: (username, url) => {
-			username = url.searchParams.get('user')
+			url.username = url.searchParams.get('user')
 			url.searchParams.delete('user')
-			return username
 		}
 	})
 	t.equal(url.href, 'https://foo@example.com/')
