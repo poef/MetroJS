@@ -14,15 +14,15 @@ export default function oauth2mw(options) {
 	} else {
 		let stateMap = new Map()
 		localState = {
-			get: () => stateMap.getItem('metro/state'),
-			has: () => stateMap.getItem('metro/state'),
-			set: (value) => stateMap.setItem('metro/state', value)
+			get: () => stateMap.get('metro/state'),
+			has: () => stateMap.get('metro/state'),
+			set: (value) => stateMap.set('metro/state', value)
 		}
 	}
 
 	const oauth2 = {
 		tokens: new Map(),
-		state: (typeof localStorage !== 'undefined' ? localStorage : new Map()),
+		state: localState,
 		endpoints: {},
 		callbacks: {},
 		client: metro.client().with(jsonmw()),
@@ -111,10 +111,16 @@ export default function oauth2mw(options) {
 	async function oauth2authorized(req, next) {
 		getTokensFromLocation()
 		if (!oauth2.tokens.has('access_token')) {
-			await fetchToken(req)
+			let token = await fetchToken(req)
+			if (!token) {
+				return metro.response('false')
+			}
 			return oauth2authorized(req, next)
 		} else if (isExpired(req)) {
-			await refreshToken(req)
+			let token = await refreshToken(req)
+			if (!token) {
+				return metro.response('false')
+			}
 			return oauth2authorized(req, next)
 		} else {
 			let accessToken = oauth2.tokens.get('access_token')
@@ -165,6 +171,8 @@ export default function oauth2mw(options) {
 			let token = await oauth2.callbacks.authorize(authReqURL)
 			if (token) {
 				oauth2.tokens.set('authorization_code', token)
+			} else {
+				return metro.response(false)
 			}
 		}
 		let tokenReq = getAccessTokenRequest()
@@ -190,7 +198,7 @@ export default function oauth2mw(options) {
 		let refreshTokenReq = getAccessTokenRequest('refresh_token')
 		let response = await oauth2.client.get(refreshTokenReq)
 		if (!response.ok) {
-			throw metro.metroError(res.status+':'+res.statusText, await res.text())
+			throw metro.metroError(response.status+':'+response.statusText, await response.text())
 		}
 		let data = await response.json()
 		oauth2.tokens.set('access_token', {
@@ -216,15 +224,16 @@ export default function oauth2mw(options) {
 			redirect_uri: /.+/,
 			scope: /.*/
 		})
-		return metro.url(url, {
-			search: {
-				response_type: 'code',
-				client_id:     oauth2.client_id,
-				redirect_uri:  oauth2.redirect_uri,
-				scope:         oauth2.scope,
-				state:         createState(40)
-			}
-		})
+		let search = {
+			response_type: 'code',
+			client_id:     oauth2.client_id,
+			redirect_uri:  oauth2.redirect_uri,
+			state:         createState(40)
+		}
+		if (oauth2.scope) {
+			search.scope = oauth2.scope
+		}
+		return metro.url(url, { search })
 	}
 
 	function createState(length) {
@@ -261,7 +270,6 @@ export default function oauth2mw(options) {
 			case 'authorization_code':
 				params.redirect_uri = oauth2.redirect_uri
 				params.code = oauth2.tokens.get('authorization_code')
-				params.response_type = 'token' // spec #3.1.1
 			break
 			case 'client_credentials':
 				throw new Error('Not yet implemented') // @TODO:
