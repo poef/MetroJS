@@ -47,6 +47,9 @@ class Client {
 				))
 			}
 		}
+
+		this.url = url(this.#options.url)
+
 		Object.freeze(this)
 	}
 
