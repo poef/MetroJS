@@ -8,14 +8,14 @@ This checks if data matches all of the assertions. If any assertion fails, this 
 
 If data is an object, assertions must also be an object. For any property of data, you can add the same property to an assertion object. That assertion can be:
 
-    a string, number or boolean: the property in the data must be the same (== comparison)
-    a regular expression: the property in the data must match this expression
-    a function: the function is called with (property, data) and must return false (for success) or an array of problems.
-    an object: each of the properties of this object must match with the child properties of the data
+- a string, number or boolean: the property in the data must be the same (== comparison)
+- a regular expression: the property in the data must match this expression
+- a function: the function is called with (property, data) and must return false (for success) or an array of problems.
+- an object: each of the properties of this object must match with the child properties of the data
 
 Here is an example:
 
-```
+```javascript
 let errors = assert.fails(response, {
   status: 200,
   headers: {
