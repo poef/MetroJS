@@ -16,6 +16,13 @@ If data is an object, assertions must also be an object. For any property of dat
 Here is an example:
 
 ```javascript
+function myValidatorFunction(property, data) {
+  if (data.error) {
+    return data.error
+  }
+  return false // no problems
+}
+
 let errors = assert.fails(response, {
   status: 200,
   headers: {
@@ -25,3 +32,4 @@ let errors = assert.fails(response, {
   body: myValidatorFunction
 })
 ```
+
