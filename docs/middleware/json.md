@@ -8,7 +8,9 @@ The `jsonmw()` middleware allows you to automatically parse and stringify javasc
 import * as metro from '@muze-nl/metro'
 import jsonmw from '@muze-nl/metro/src/mw/json.mjs'
 
-const client = metro.client().with( jsonmw() )
+const client = metro.client().with( jsonmw({
+	space: "\t"
+}) )
 ```
 
 Then to send and receive data:
@@ -29,3 +31,10 @@ If the HTTP request supports a body, as in `POST`, `PUT`, `PATCH` and `QUERY`, i
 
 The body of the response is automatically parsed as json.
 
+## Configuration Options
+
+The JSON middleware allows you to set the options to use when parsing or stringifying JSON:
+
+- `reviver`: A function to use when parsing JSON, just like [JSON.parse](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/parse#the_reviver_parameter)
+- `replaced`: A function to use when stringifying JSON, just like [JSON.stringify](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify#the_replacer_parameter)
+- `space`: The indentation to use when stringifying JSON, just like [JSON.stringify](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify#space)
