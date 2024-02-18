@@ -4,12 +4,17 @@ import jsonmw from './json.mjs'
 
 export default function oauth2mw(options) {
 
-	let localState
+	let localState, localTokens
 	if (typeof localStorage !== 'undefined') {
 		localState = {
 			get: () => localStorage.getItem('metro/state'),
 			has: () => localStorage.getItem('metro/state'),
 			set: (value) => localStorage.setItem('metro/state', value)
+		}
+		localTokens = {
+			get: (name) => localStorage.getItem(name),
+			set: (name, value) => localStorage.setItem(name, value),
+			has: (name) => localStorage.hasItem(name)
 		}
 	} else {
 		let stateMap = new Map()
@@ -18,10 +23,11 @@ export default function oauth2mw(options) {
 			has: () => stateMap.get('metro/state'),
 			set: (value) => stateMap.set('metro/state', value)
 		}
+		localTokens = new Map()
 	}
 
 	const oauth2 = {
-		tokens: localStorage,
+		tokens: localTokens,
 		state: localState,
 		endpoints: {
 			authorize: '/authorize',
