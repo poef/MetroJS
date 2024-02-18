@@ -31,7 +31,7 @@ export default function oauth2mock(req, next) {
 		case '/authorize/':
 			if (error = assert.fails(url.searchParams, {
 				response_type: 'code',
-				client_id: 'clientId',
+				client_id: 'mockClientId',
 				state: assert.optional(/.*/)
 			})) {
 				return metro.response(badRequest(error))
@@ -52,7 +52,7 @@ export default function oauth2mock(req, next) {
 			switch(url.searchParams.grant_type) {
 				case 'refresh_token':
 					if (error = assert.fails(url.searchParams, {
-						refresh_token: 'mockRefresh',
+						refresh_token: 'mockRefreshToken',
 						client_id: 'mockClientId',
 						client_secret: 'mockClientSecret'
 					})) {

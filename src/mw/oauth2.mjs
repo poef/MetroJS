@@ -21,7 +21,7 @@ export default function oauth2mw(options) {
 	}
 
 	const oauth2 = {
-		tokens: new Map(),
+		tokens: localStorage,
 		state: localState,
 		endpoints: {
 			authorize: '/authorize',
