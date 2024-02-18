@@ -52,6 +52,22 @@ tap.test('headers', t => {
 	t.end()
 })
 
+tap.test('extend headers', t => {
+	let req = metro.request('https://example.com', {
+		headers: {
+			'X-Foo': 'bar'
+		}
+	}).with({
+		headers: {
+			'X-Bar': 'foo'
+		}
+	})
+	t.has(req.headers.get('x-foo'), 'bar')
+	t.has(req.headers.get('x-bar'), 'foo')
+	t.end()
+})
+
+
 tap.test('body', t => {
 	let req = metro.request('https://example.com', {
 		method: 'POST',
@@ -68,6 +84,18 @@ tap.test('bodyFormData', t => {
 		method: 'POST',
 		body: fd
 	})
+	t.ok(req.body instanceof ReadableStream)
+	t.ok(req.body[metro.symbols.source] instanceof FormData)
+	t.equal(req.body.get('foo'), 'bar')
+	t.end()
+})
+
+tap.test('inferBodyFromType', t => {
+	let fd = new FormData()
+	fd.append('foo','bar')
+	let req = metro.request('https://example.com', {
+		method: 'POST'
+	}, fd)
 	t.ok(req.body instanceof ReadableStream)
 	t.ok(req.body[metro.symbols.source] instanceof FormData)
 	t.equal(req.body.get('foo'), 'bar')

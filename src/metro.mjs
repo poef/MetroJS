@@ -245,6 +245,14 @@ function getRequestParams(req, current) {
 		} else if (typeof req[prop] != 'undefined') {
 			if (prop == 'url') {
 				params.url = url(params.url, req.url)
+			} else if (prop == 'headers') {
+				params.headers = new Headers(current.headers)
+				if (!(req.headers instanceof Headers)) {
+					req.headers = new Headers(req.headers)
+				}
+				for (let [key, value] of req.headers.entries()) {
+					params.headers.set(key, value)
+				}
 			} else {
 				params[prop] = req[prop]
 			}
@@ -267,6 +275,14 @@ export function request(...options) {
 			|| option instanceof URLSearchParams
 		) {
 			requestParams.url = url(requestParams.url, option)
+		} else if (option && (
+			option instanceof FormData
+			|| option instanceof ReadableStream
+			|| option instanceof Blob
+			|| option instanceof ArrayBuffer
+			|| option instanceof DataView
+		)) {
+			requestParams.body = option
 		} else if (option && typeof option == 'object') {
 			Object.assign(requestParams, getRequestParams(option, requestParams))
 		}

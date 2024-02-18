@@ -23,8 +23,13 @@ export default function oauth2mw(options) {
 	const oauth2 = {
 		tokens: new Map(),
 		state: localState,
-		endpoints: {},
-		callbacks: {},
+		endpoints: {
+			authorize: '/authorize',
+			token: '/token'
+		},
+		callbacks: {
+			authorize: url => document.location = url
+		},
 		client: metro.client().with(jsonmw()),
 		client_id: '',
 		client_secret: '',
