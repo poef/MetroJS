@@ -44,4 +44,3 @@ Only the `client_id` and `client_secret` don't have valid defaults. The defaults
 - `callbacks.authorize`: `url => document.location = url`
 - `endpoints.authorize`: `/authorize`
 - `endpoints.token`: `/token`
-
