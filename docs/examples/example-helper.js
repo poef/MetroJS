@@ -14,7 +14,7 @@ function addElements(container, elements) {
 
 function createHTML(text) {
   const elements = []
-  const range = document.createRange();
+  const range = document.createRange()
 
   const fragment = range.createContextualFragment(text)
 
@@ -23,7 +23,7 @@ function createHTML(text) {
     elements.push(element)
   })
 
-  return elements;
+  return elements
 }
 
 function createJS(text) {
