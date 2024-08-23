@@ -1,13 +1,22 @@
-function addElements(container, elements) {
+function addElements(container, elements, metroLoaded = false) {
+  if (metroLoaded === false && elements.length === 1 && elements[0].tagName === 'SCRIPT' && ! elements[0].src) {
+    metroLoaded = true
+    const script = document.createElement('script')
+    script.src = 'https://cdn.jsdelivr.net/npm/@muze-nl/metro/dist/everything.js'
+    script.setAttribute('data-js', 'loaded')
+    elements.unshift(script)
+
+  }
+
   const currentElement = elements.shift()
 
   if (currentElement !== undefined) {
     container.appendChild(currentElement)
 
     if (currentElement.tagName === 'SCRIPT' && currentElement.src) {
-      currentElement.addEventListener('load', () => addElements(container, elements))
+      currentElement.addEventListener('load', () => addElements(container, elements, metroLoaded))
     } else {
-      addElements(container, elements)
+      addElements(container, elements, metroLoaded)
     }
   }
 }
@@ -17,6 +26,12 @@ function createHTML(text) {
   const range = document.createRange()
 
   const fragment = range.createContextualFragment(text)
+
+  fragment.childNodes.forEach(element => {
+    if (element.nodeType === 3 && element.textContent.trim() === '') {
+      element.remove()
+    }
+  })
 
   fragment.childNodes.forEach(element => {
     console.info('element', element.nodeName, element)

@@ -21,7 +21,7 @@ main script::before {
   content: '<script>';
 }
 
-main script[src]::before {
+main script[src]:not([data-js="loaded"])::before {
   content: '<script src="' attr(src) '">';
 }
 
