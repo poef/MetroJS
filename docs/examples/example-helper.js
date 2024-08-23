@@ -1,3 +1,17 @@
+function addElements(container, elements) {
+  const currentElement = elements.shift()
+
+  if (currentElement !== undefined) {
+    container.appendChild(currentElement)
+
+    if (currentElement.tagName === 'SCRIPT' && currentElement.src) {
+      currentElement.addEventListener('load', () => addElements(container, elements))
+    } else {
+      addElements(container, elements)
+    }
+  }
+}
+
 function createHTML(text) {
   const elements = []
   const range = document.createRange();
