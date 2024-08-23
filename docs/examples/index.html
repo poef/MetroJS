@@ -7,6 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@muze-nl/metro/dist/browser.js"></script>
 
 <link rel="stylesheet" href="example-helper.css" />
+<script src="example-helper.js"></script>
 
 <header>
     <nav>
@@ -108,4 +109,50 @@
         </output>
     </section>
 </main>
+
+<script type="importmap">
+    {
+      "imports": {
+        "@muze-nl/metro": "https://cdn.jsdelivr.net/npm/@muze-nl/metro",
+        "@muze-nl/metro/src/mw/json.mjs": "https://cdn.jsdelivr.net/npm/@muze-nl/metro/src/mw/json.mjs"
+      }
+    }
+</script>
+
+<script>
+    window.addEventListener('error', errorEvent => console.error(errorEvent.error.message))
+    window.addEventListener('hashchange', () => document.location.reload())
+    window.addEventListener('unhandledrejection', promiseRejectionEvent => console.error(promiseRejectionEvent.reason))
+
+    const outputList = document.querySelector('output ul')
+    const file = document.location.hash.split('#')[1]
+
+    console.error = error => outputList.insertAdjacentHTML('beforeend', `<li class="error">${error}</li>`)
+    console.log = message => outputList.insertAdjacentHTML('beforeend', `<li>${htmlEncoded(JSON.stringify(message, null, 4))}</li>`)
+
+    if (file && file !== '') {
+        document.querySelector('main').attributes.removeNamedItem('hidden')
+
+        const container = document.querySelector('pre > code')
+        const fileType = file.split('.').pop()
+
+        fetch(`.${file}`)
+            .then(response => response.ok ? response.text() : Promise.reject(response))
+            .then(text => loadExample(fileType, text))
+            .then(elements => elements.forEach(element => container.appendChild(element)))
+            .catch(async error => {
+                let errorMessage = `An error occurred while loading the  <code>${file}</code> example: `
+
+                if (error instanceof Error) {
+                    errorMessage += ` ${error.message}`
+                } else if (typeof error === 'object') {
+                    if (typeof error.text === 'function') {
+                        errorMessage += ` ${await error.text()}`
+                    }
+                }
+
+                console.error(errorMessage)
+            })
+    }
+</script>
 </html>
