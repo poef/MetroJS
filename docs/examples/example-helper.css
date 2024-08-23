@@ -1,0 +1,66 @@
+title {
+  display: inline;
+}
+
+main blockquote {
+  font-size: 1.35em;
+  margin-top: 0;
+  padding: 0;
+}
+
+main h2 {
+  width: 100%;
+  text-align: center;
+}
+
+main script::after {
+  content: '</script>';
+}
+
+main script::before {
+  content: '<script>';
+}
+
+main script[src]::before {
+  content: '<script src="' attr(src) '">';
+}
+
+main script[type="module"]::before {
+  content: '<script type="module">';
+}
+
+main li, main script {
+  display: block;
+  overflow: auto;
+  white-space: pre;
+}
+
+output {
+  width: 100%;
+}
+
+output li {
+  border-top: 1px solid #ccc;
+  font-size: 0.8em;
+  line-height: 1;
+  margin: 0;
+  padding: 1em 0;
+}
+
+output ul {
+  margin: 0;
+  padding: 0;
+}
+
+.error {
+  border: 1px solid crimson;
+  background: #fdd;
+  padding: 1em;
+  border-radius: 0.35em;
+}
+
+.error::before {
+  color: crimson;
+  content: 'Error: ';
+  font-weight: bold;
+}
