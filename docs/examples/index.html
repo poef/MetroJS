@@ -149,7 +149,7 @@
     console.log = message => outputList.insertAdjacentHTML('beforeend', `<li>${htmlEncoded(JSON.stringify(message, null, 4))}</li>`)
 
     if (file && file !== '') {
-        title = file.replace(/\.1\.$/, '.')
+        let title = file.replace('.1.', '.').replace('README', '')
             // Remove the extension
             .split('.').slice(0, -1).join(' ')
             // Capitalize the first letter of each word
