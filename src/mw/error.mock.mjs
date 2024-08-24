@@ -69,9 +69,11 @@ const status = {
 export default function errorMock(options) {
 	return (req, next) => {
 		let url = metro.url(req.url)
-		if (status[url.pathname]) {
+		const code = url.pathname.split('/').filter(Boolean).pop()
+
+		if (status[code]) {
 			let error = {
-				code: parseInt(url.pathname.substring(1)),
+				code: parseInt(code, 10),
 				message: status[url.pathname]
 			}
 			return metro.response(badRequest(error))
