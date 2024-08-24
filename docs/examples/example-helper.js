@@ -8,9 +8,14 @@ function addElements(container, elements, metroLoaded = false) {
 
   }
 
-  const currentElement = elements.shift()
+  let currentElement = elements.shift()
 
   if (currentElement !== undefined) {
+    // Ignore scripts injected by cloudflare
+    if (currentElement.tagName === 'SCRIPT' && currentElement.src && currentElement.src.includes('/cdn-cgi/apps/')) {
+      currentElement = elements.shift()
+    }
+
     container.appendChild(currentElement)
 
     if (currentElement.tagName === 'SCRIPT' && currentElement.src) {
