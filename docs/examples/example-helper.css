@@ -89,6 +89,14 @@ nav .selected {
 }
 
 /* Menu on mobile devices */
+:root {
+  --menu-label:'Toggle Menu';
+}
+nav > button:empty,
+nav > button[aria-controls] {
+  display: none;
+}
+
 @media (max-width: 768px) {
   nav > ul {
     background: var(--color-bg);
@@ -104,33 +112,46 @@ nav .selected {
     top: 0;
   }
 
-  nav > button:empty {
-    background: var(--color-bg);
-    border: none;
-    color: var(--color-primary);
+  nav > button:empty,
+  nav > button[aria-controls] {
     cursor: pointer;
-    font-size: 1.5em;
+    display: inline-block;
   }
 
   nav > button:empty::before {
-    content: '☰';
+    content: attr(aria-label, var(--menu-label));
   }
 
-  nav > button:empty:focus {
+  nav > button:empty:focus,
+  nav > button[aria-controls]:focus {
     opacity: 0;
   }
 
-  nav:has(button:empty) > ul::before {
-    content: '✖';
+  nav:has(button:empty) > ul::before,
+  nav:has(button[aria-controls]) > ul::before {
+    /* FROM: a b, a strong, button, input[type="submit"] */
+    background-color: var(--color-link);
+    border: 2px solid var(--color-link);
+    color: var(--color-bg);
+
+    /* FROM: a b, a em, a i, a strong, button, input[type="submit"] */
+    border-radius: var(--border-radius);
+    display: block;
+    font-size: medium;
+    font-weight: bold;
+    line-height: var(--line-height);
+    padding: 1rem 2rem;
+
+    /* Element specific */
+    content: attr(aria-label, var(--menu-label));
     cursor: pointer;
     float: right;
-    font-size: 1.5em;
-    margin-right: 2em;
-    margin-top: 1em;
+    margin: 0.75rem 1rem 0.5rem 0;
   }
 
   nav:focus-within > ul,
-  nav:has(button:empty:focus) > ul {
+  nav:has(button:empty:focus) > ul,
+  nav:has(button[aria-controls]:focus) > ul {
     display: block;
   }
 
