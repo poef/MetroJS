@@ -21,7 +21,7 @@ main script::before {
   content: '<script>';
 }
 
-main script[src]:not([data-js="loaded"])::before {
+main script[src]::before {
   content: '<script src="' attr(src) '">';
 }
 
@@ -33,6 +33,10 @@ main li, main script {
   display: block;
   overflow: auto;
   white-space: pre;
+}
+
+main script[src][data-js="loaded"] {
+  display: none;
 }
 
 output {

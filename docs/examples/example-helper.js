@@ -18,6 +18,10 @@ function addElements(container, elements, metroLoaded = false) {
 
     container.appendChild(currentElement)
 
+    if (currentElement.tagName === 'SCRIPT' && currentElement.src === 'https://cdn.jsdelivr.net/npm/@muze-nl/metro/dist/everything.js') {
+      metroLoaded = true
+    }
+
     if (currentElement.tagName === 'SCRIPT' && currentElement.src) {
       currentElement.addEventListener('load', () => addElements(container, elements, metroLoaded))
     } else {
