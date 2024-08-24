@@ -140,6 +140,13 @@
     console.log = message => outputList.insertAdjacentHTML('beforeend', `<li>${htmlEncoded(JSON.stringify(message, null, 4))}</li>`)
 
     if (file && file !== '') {
+        title = file.replace(/\.1\.$/, '.')
+            // Remove the extension
+            .split('.').slice(0, -1).join(' ')
+            // Capitalize the first letter of each word
+            .split('/').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+
+        document.title = `MetroJS - Examples - ${title}`
         document.querySelector('main').attributes.removeNamedItem('hidden')
 
         const container = document.querySelector('pre > code')
