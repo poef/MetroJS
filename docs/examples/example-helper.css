@@ -68,3 +68,78 @@ output ul {
   content: 'Error: ';
   font-weight: bold;
 }
+
+nav a {
+  text-decoration: none;
+}
+
+nav a:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--color-secondary);
+}
+
+nav li:has(ul a.selected) a[href="#"] {
+  text-decoration: underline;
+}
+
+nav .selected {
+  color: var(--color-secondary);
+  text-decoration: underline;
+  cursor: default;
+}
+
+/* Menu on mobile devices */
+@media (max-width: 768px) {
+  nav > ul {
+    background: var(--color-bg);
+    bottom: 0;
+    display: none;
+    height: fit-content;
+    left: 0;
+    margin: 0;
+    max-height: 100%;
+    overflow: auto;
+    position: fixed;
+    right: 0;
+    top: 0;
+  }
+
+  nav > button:empty {
+    background: var(--color-bg);
+    border: none;
+    color: var(--color-primary);
+    cursor: pointer;
+    font-size: 1.5em;
+  }
+
+  nav > button:empty::before {
+    content: '☰';
+  }
+
+  nav > button:empty:focus {
+    opacity: 0;
+  }
+
+  nav:has(button:empty) > ul::before {
+    content: '✖';
+    cursor: pointer;
+    float: right;
+    font-size: 1.5em;
+    margin-right: 2em;
+    margin-top: 1em;
+  }
+
+  nav:focus-within > ul,
+  nav:has(button:empty:focus) > ul {
+    display: block;
+  }
+
+  nav ul li {
+    width: calc(100% - 1em);
+  }
+
+  nav ul li ul {
+    display: block;
+    position: static;
+  }
+}
