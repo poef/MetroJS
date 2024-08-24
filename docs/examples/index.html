@@ -16,8 +16,15 @@
 <header>
     <nav>
         <a href="https://metro.muze.nl/"><img alt="MetroJS Logo" src="https://metro.muze.nl/logo.svg"></a>
-        <button></button>
-        <ul>
+        <button
+            aria-controls="menu"
+            aria-expanded="false"
+            aria-label="Toggle Menu"
+            onfocusin="this.setAttribute('aria-expanded', 'true')"
+            onfocusout="this.setAttribute('aria-expanded', 'false')"
+            onkeydown="if (event.keyCode === 27) this.blur()"
+        >Open Menu</button>
+        <ul id="menu" aria-label="Close Menu">
             <li><a href="#">Introduction</a>
                 <ul>
                     <li><a href="#/introduction.1.js">Example</a></li>
