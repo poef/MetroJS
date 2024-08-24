@@ -5,7 +5,6 @@ function addElements(container, elements, metroLoaded = false) {
     script.src = 'https://cdn.jsdelivr.net/npm/@muze-nl/metro/dist/everything.js'
     script.setAttribute('data-js', 'loaded')
     elements.unshift(script)
-
   }
 
   let currentElement = elements.shift()
@@ -43,7 +42,6 @@ function createHTML(text) {
   })
 
   fragment.childNodes.forEach(element => {
-    console.info('element', element.nodeName, element)
     elements.push(element)
   })
 
