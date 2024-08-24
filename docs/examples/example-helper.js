@@ -60,7 +60,7 @@ function createJS(text) {
 }
 
 function htmlEncoded(subject) {
-  return subject.replace(/[\u00A0-\u9999<>&]/g, i => '&#' + i.charCodeAt(0) + ';')
+  return subject?.replace(/[\u00A0-\u9999<>&]/g, i => '&#' + i.charCodeAt(0) + ';')
 }
 
 function loadExample(fileType, text) {
