@@ -2,6 +2,11 @@ title {
   display: inline;
 }
 
+header, main {
+  padding-bottom: 0;
+  padding-top: 0;
+}
+
 main blockquote {
   font-size: 1.35em;
   margin-top: 0;
@@ -11,6 +16,16 @@ main blockquote {
 main h2 {
   width: 100%;
   text-align: center;
+}
+
+main li {
+  display: block;
+  overflow: auto;
+  white-space: pre;
+}
+
+main pre code {
+  width: fit-content;
 }
 
 main script::after {
@@ -29,9 +44,8 @@ main script[type="module"]::before {
   content: '<script type="module">';
 }
 
-main li, main script {
+main script {
   display: block;
-  overflow: auto;
   white-space: pre;
 }
 
@@ -58,7 +72,7 @@ output ul {
 
 .error {
   border: 1px solid crimson;
-  background: #fdd;
+  background: #dc143c33;
   padding: 1em;
   border-radius: 0.35em;
 }
