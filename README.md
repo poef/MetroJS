@@ -1,3 +1,5 @@
+Note: This repository has moved to https://github.com/muze-nl/metro/
+
 # MetroJS: HTTPS Client with middleware
 
 [![Project stage: Experimental][project-stage-badge: Experimental]][project-stage-page]
