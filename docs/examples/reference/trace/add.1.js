@@ -1,0 +1,5 @@
+
+{
+  request: (req) => {},
+  response: (res) => {}
+}

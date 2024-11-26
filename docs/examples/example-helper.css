@@ -1,0 +1,180 @@
+title {
+  display: inline;
+}
+
+header, main {
+  padding-bottom: 0;
+  padding-top: 0;
+}
+
+main blockquote {
+  font-size: 1.35em;
+  margin-top: 0;
+  padding: 0;
+}
+
+main h2 {
+  width: 100%;
+  text-align: center;
+}
+
+main li {
+  display: block;
+  overflow: auto;
+  white-space: pre;
+}
+
+main pre code {
+  width: fit-content;
+}
+
+main script::after {
+  content: '</script>';
+}
+
+main script::before {
+  content: '<script>';
+}
+
+main script[src]::before {
+  content: '<script src="' attr(src) '">';
+}
+
+main script[type="module"]::before {
+  content: '<script type="module">';
+}
+
+main script {
+  display: block;
+  white-space: pre;
+}
+
+main script[src][data-js="loaded"] {
+  display: none;
+}
+
+output {
+  width: 100%;
+}
+
+output li {
+  border-top: 1px solid #ccc;
+  font-size: 0.8em;
+  line-height: 1;
+  margin: 0;
+  padding: 1em 0;
+}
+
+output ul {
+  margin: 0;
+  padding: 0;
+}
+
+.error {
+  border: 1px solid crimson;
+  background: #dc143c33;
+  padding: 1em;
+  border-radius: 0.35em;
+}
+
+.error::before {
+  color: crimson;
+  content: 'Error: ';
+  font-weight: bold;
+}
+
+nav a {
+  text-decoration: none;
+}
+
+nav a:hover {
+  text-decoration: underline;
+  text-decoration-color: var(--color-secondary);
+}
+
+nav li:has(ul a.selected) a[href="#"] {
+  text-decoration: underline;
+}
+
+nav .selected {
+  color: var(--color-secondary);
+  text-decoration: underline;
+  cursor: default;
+}
+
+/* Menu on mobile devices */
+:root {
+  --menu-label:'Toggle Menu';
+}
+nav > button:empty,
+nav > button[aria-controls] {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  nav > ul {
+    background: var(--color-bg);
+    bottom: 0;
+    display: none;
+    height: fit-content;
+    left: 0;
+    margin: 0;
+    max-height: 100%;
+    overflow: auto;
+    position: fixed;
+    right: 0;
+    top: 0;
+  }
+
+  nav > button:empty,
+  nav > button[aria-controls] {
+    cursor: pointer;
+    display: inline-block;
+  }
+
+  nav > button:empty::before {
+    content: attr(aria-label, var(--menu-label));
+  }
+
+  nav > button:empty:focus,
+  nav > button[aria-controls]:focus {
+    opacity: 0;
+  }
+
+  nav:has(button:empty) > ul::before,
+  nav:has(button[aria-controls]) > ul::before {
+    /* FROM: a b, a strong, button, input[type="submit"] */
+    background-color: var(--color-link);
+    border: 2px solid var(--color-link);
+    color: var(--color-bg);
+
+    /* FROM: a b, a em, a i, a strong, button, input[type="submit"] */
+    border-radius: var(--border-radius);
+    display: block;
+    font-size: medium;
+    font-weight: bold;
+    line-height: var(--line-height);
+    padding: 1rem 2rem;
+
+    /* Element specific */
+    content: attr(aria-label, var(--menu-label));
+    cursor: pointer;
+    float: right;
+    margin: 0.75rem 1rem 0.5rem 0;
+  }
+
+  nav:focus-within > ul,
+  nav:has(button:empty:focus) > ul,
+  nav:has(button[aria-controls]:focus) > ul {
+    display: block;
+  }
+
+  nav ul li {
+    width: calc(100% - 1em);
+  }
+
+  nav ul li ul {
+    display: block;
+    position: static;
+  }
+}

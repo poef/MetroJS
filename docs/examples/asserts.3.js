@@ -1,0 +1,2 @@
+
+metro.assert.enable()
